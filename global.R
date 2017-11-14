@@ -11,7 +11,7 @@ library(broom)
 
 # Define UI for application that draws a scatterplot
 #small category label database
-cate_lab <- read.csv("scate_list.csv",sep=",",header=T,fileEncoding="utf-8")
+cate_lab <- read.table("scate_list.tsv",sep="\t",header=T,fileEncoding="utf-8")
 fin.1<-"scate_weekly_click.csv"
 fin.2<-"scate_weekly_cv.csv"
 fin.3<-"scate_weekly_clickuu.csv"

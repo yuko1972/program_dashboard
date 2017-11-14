@@ -207,6 +207,7 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                               checkboxInput("checkbox_view", label = "実行", value = FALSE)
                             ),
                             mainPanel(
+                              div("当てはまりがある程度良いカテゴリの表示"),
                               div("モデルの当てはまりの良い(r2が1に近いほど良い)カテゴリ順"),
                               verbatimTextOutput("current_model_name"),
                               br(),

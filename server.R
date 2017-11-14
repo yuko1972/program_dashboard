@@ -146,8 +146,9 @@ shinyServer(function(input, output) {
     # both_log model
     # y= ax^b
     # ln(y)=ln(a)+b*ln(x)
+    # log(0)=INFを避けるために、0.01を加算
     #-----------------------------------------
-    res2 <- lm(data=selected_df,I(log(get(y_var)))~ I(log(get(x_var))))
+    res2 <- lm(data=selected_df,I(log(get(y_var)+0.01))~ I(log(get(x_var)+0.01)))
     parm_df.2 <- get_parameters(res2)
     
     #モデルの当てはめ結果(ベクトル)
@@ -165,7 +166,7 @@ shinyServer(function(input, output) {
     # y=ab^x
     # ln(y) = ln(a) + ln(b)*x
     #-----------------------------------------
-    res3 <- lm(data=selected_df,I(log(get(y_var)))~ get(x_var))
+    res3 <- lm(data=selected_df,I(log(get(y_var)+0.03))~ get(x_var))
     parm_df.3 <- get_parameters(res3)
     
     #モデルの当てはめ結果(ベクトル)
@@ -181,7 +182,7 @@ shinyServer(function(input, output) {
     # semi_log model(log convert media(x))
     # y = a + b*ln(x)
     #-----------------------------------------
-    res4 <- lm(data=selected_df,get(y_var)~ I(log(get(x_var))))
+    res4 <- lm(data=selected_df,get(y_var)~ I(log(get(x_var)+0.01)))
     parm_df.4 <- get_parameters(res4)
     
     #モデルの当てはめ結果(ベクトル)
@@ -637,9 +638,9 @@ shinyServer(function(input, output) {
       selected_df<- type_df %>% dplyr::filter(get(field_type)==i)
       #--モデルを複数実行する
       res_rg<-lm(data=selected_df,get(y_var)~get(x_var))
-      res_rg2<-lm(data=selected_df,I(log(get(y_var)))~ I(log(get(x_var))))
-      res_rg3<-lm(data=selected_df,I(log(get(y_var)))~ get(x_var))
-      res_rg4<-lm(data=selected_df,get(y_var)~I(log(get(x_var))))
+      res_rg2<-lm(data=selected_df,I(log(get(y_var)+0.01))~ I(log(get(x_var)+0.01)))
+      res_rg3<-lm(data=selected_df,I(log(get(y_var)+0.01))~ get(x_var))
+      res_rg4<-lm(data=selected_df,get(y_var)~I(log(get(x_var)+0.01)))
       
       parm_df.1 <-get_parameters(res_rg)
       parm_df.1$model_type<-"normal"
@@ -681,7 +682,7 @@ shinyServer(function(input, output) {
       outdf<-left_join(x=mcate_exist[,c("category_min_id","choise_label")],y=outdf,by=c("category_min_id"="cateID"))
     }
     #各カテゴリごとのモデルパラメータから決定係数だけ取得する
-    outdf <- outdf %>% dplyr::select(choise_label,r2,model_type)  
+    outdf <- outdf %>% dplyr::select(choise_label,r2,model_type)
     return(outdf)
   })
   
@@ -690,8 +691,10 @@ shinyServer(function(input, output) {
 
     #checkbox_viewで実行ボタン
     if(input$checkbox_view == TRUE){
-      #get_compare_reg()で、click数を説明するモデルを全カテゴリで実行する
+      #get_compare_reg()で、モデルを全カテゴリで実行した結果を受けとる
       compare_model_output<-get_compare_reg()
+      # 調整済決定係数(r2)のカテゴリⅡ絞って表示させる
+      compare_model_output <- compare_model_output %>% dplyr::filter(r2>=0.4)
       DT::datatable(compare_model_output,
                     rownames=FALSE,
                     options = list(
