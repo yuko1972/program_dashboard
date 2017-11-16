@@ -142,6 +142,8 @@ shinyServer(function(input, output) {
     parm_df.1$last_y <- est_df.1[length(est_df.1)]
 
     
+    
+    
     #-----------------------------------------
     # both_log model
     # y= ax^b
@@ -162,11 +164,11 @@ shinyServer(function(input, output) {
     #-----------------------------------------
     # semi_log model(log convert only click(y))
     # 指数モデル
-    #$$$$ y=a*e^(cx) by(toyota)
-    # y=ab^x
-    # ln(y) = ln(a) + ln(b)*x
+    #$$$$ y=a*e^(bx) by(toyota)
+    # a^ = exp(a)
+    # y = exp(a)*exp(bx)
     #-----------------------------------------
-    res3 <- lm(data=selected_df,I(log(get(y_var)+0.03))~ get(x_var))
+    res3 <- lm(data=selected_df,I(log(get(y_var)+0.01))~ get(x_var))
     parm_df.3 <- get_parameters(res3)
     
     #モデルの当てはめ結果(ベクトル)
@@ -199,7 +201,7 @@ shinyServer(function(input, output) {
     # モデルの結果をレコードに繋げる
     #-----------------------------------------
     parm_all <- rbind(parm_df.1,parm_df.2,parm_df.3,parm_df.4)
-
+    
     #r2(adjusted)の最高のモデルを特定する
     parm_good_model <- parm_all %>% dplyr::arrange(desc(r2)) %>% head(1)
     
@@ -212,7 +214,138 @@ shinyServer(function(input, output) {
     #最直近のy(cl_cnt,cv_cnt)の観測値を出力に持たせる
     #parm_good_model$last_obs.y<- selected_df$cl_cnt[nrow(selected_df)]
     parm_good_model$last_obs.y<-selected_df[nrow(selected_df),c(y_var)]
-    return(parm_good_model)
+    
+    #-----------------------------------------
+    # Robust(MM推定) original model
+    #-----------------------------------------
+    res5 <- lmrob(data=selected_df,get(y_var)~ get(x_var),control=lmrob.control(seed=1))
+    parm_df.5 <- get_rob_parameters(res5)
+    
+    #--modelの適合度検定
+    model.null <- lmrob(data=selected_df, get(y_var)~1,cotrol=lmrob.control(seed=1))
+    anova.res <-as.data.frame(anova(res5,model.null))
+
+    teststat<-as.data.frame(anova.res[2,c("Test.Stat","Pr(>chisq)")])
+    colnames(teststat)<-c("Test.Stat","model_pval")
+    
+    #--分散分析結果とχ2検定結果の％値
+    parm_df.5 <- cbind(parm_df.5,teststat)
+
+    #モデルの当てはめ結果(ベクトル)
+    est_df.5<- fitted(res5)
+  
+  
+    #モデル名を追加
+    parm_df.5$model_type <- "robust_normal"
+    #最直近の期待値
+    parm_df.5$last_y <- est_df.5[length(est_df.5)]
+  
+    #-----------------------------------------
+    # both_log model
+    # y= ax^b
+    # ln(y)=ln(a)+b*ln(x)
+    # log(0)=INFを避けるために、0.01を加算
+    #-----------------------------------------
+    res6 <- lmrob(data=selected_df,I(log(get(y_var)+0.01))~ I(log(get(x_var)+0.01)),control=lmrob.control(seed=1))
+    parm_df.6 <- get_rob_parameters(res6)
+    
+    #--modelの適合度検定
+    model.null2 <- lmrob(data=selected_df, I(log(get(y_var)+0.01))~1,cotrol=lmrob.control(seed=1))
+    anova.res <-as.data.frame(anova(res6,model.null2))
+    
+    teststat<-as.data.frame(anova.res[2,c("Test.Stat","Pr(>chisq)")])
+    colnames(teststat)<-c("Test.Stat","model_pval")
+    
+    #--分散分析結果とχ2検定結果の％値
+    parm_df.6 <- cbind(parm_df.6,teststat)
+    
+    #モデルの当てはめ結果(ベクトル)
+    est_df.6<- fitted(res6)
+    #モデル名を追加
+    parm_df.6$model_type <- "robust_double_log"
+    #最直近の期待値
+    parm_df.6$last_y <- est_df.6[length(est_df.6)]
+    
+    #-----------------------------------------
+    # robust semi_log model(log convert only click(y))
+    # 指数モデル
+    #$$$$ y=a*e^(bx) by(toyota)
+    # a^ = exp(a)
+    # y = exp(a)*exp(bx)
+    #-----------------------------------------
+    res7 <- lmrob(data=selected_df,I(log(get(y_var)+0.01))~ get(x_var),control=lmrob.control(seed=1))
+    parm_df.7 <- get_rob_parameters(res7)
+    
+    #--modelの適合度検定
+    model.null <- lmrob(data=selected_df, I(log(get(y_var)+0.01))~1,cotrol=lmrob.control(seed=1))
+    anova.res <-as.data.frame(anova(res7,model.null))
+    
+    teststat<-as.data.frame(anova.res[2,c("Test.Stat","Pr(>chisq)")])
+    colnames(teststat)<-c("Test.Stat","model_pval")
+    
+    #--分散分析結果とχ2検定結果の％値
+    parm_df.7 <- cbind(parm_df.7,teststat)
+    
+    
+    #モデルの当てはめ結果(ベクトル)
+    est_df.7<- fitted(res7)
+    
+    #モデル名を追加
+    parm_df.7$model_type <- "robust_y_log"
+    #最直近の期待値
+    parm_df.7$last_y <- est_df.7[length(est_df.7)]
+    
+    #-----------------------------------------
+    # robust semi_log model(log convert media(x))
+    # y = a + b*ln(x)
+    #-----------------------------------------
+    res8 <- lmrob(data=selected_df,get(y_var)~ I(log(get(x_var)+0.01)),control=lmrob.control(seed=1))
+    parm_df.8 <- get_rob_parameters(res8)
+    #--modelの適合度検定
+    model.null <- lmrob(data=selected_df, get(y_var)~1,cotrol=lmrob.control(seed=1))
+    anova.res <-as.data.frame(anova(res8,model.null))
+    
+    teststat<-as.data.frame(anova.res[2,c("Test.Stat","Pr(>chisq)")])
+    colnames(teststat)<-c("Test.Stat","model_pval")
+    
+    #--分散分析結果とχ2検定結果の％値
+    parm_df.8 <- cbind(parm_df.8,teststat)    
+    
+    
+    #モデルの当てはめ結果(ベクトル)
+    est_df.8<- fitted(res8)
+    
+    #モデル名を追加
+    parm_df.8$model_type <- "robust_x_log"
+    #最直近の期待値
+    parm_df.8$last_y <- est_df.8[length(est_df.8)]
+    
+    #-----------------------------------------
+    # モデルの結果をレコードに繋げる
+    #-----------------------------------------
+    parm_all_robust <- rbind(parm_df.5,parm_df.6,parm_df.7,parm_df.8)
+    
+    #r2(adjusted)の最高のモデルを特定する
+    parm_all_robust<- parm_all_robust %>% dplyr::arrange(desc(r2)) %>% head(1)
+    
+    #最直近のxの値(media_cnt,cl_cnt)の値を出力に持たせる
+    tmp<-selected_df %>% dplyr::arrange(desc(week_num)) %>% head(1)%>% dplyr::select(x_var)
+    #tmp<-tmp$media_cnt
+    tmp <- tmp[,c(x_var)]
+    parm_all_robust$last_x <- tmp
+    
+    #最直近のy(cl_cnt,cv_cnt)の観測値を出力に持たせる
+    #parm_good_model$last_obs.y<- selected_df$cl_cnt[nrow(selected_df)]
+    parm_all_robust$last_obs.y<-selected_df[nrow(selected_df),c(y_var)]
+    
+    colnames(parm_all_robust)<-colnames(parm_good_model)
+    
+    #繋げる
+    good_model<-rbind(parm_good_model,parm_all_robust)
+    
+    #r2の最良のものを選択する
+    good_model <- good_model %>%  dplyr::arrange(desc(r2)) %>% head(1)
+    return(good_model)
 
   }
  # })
@@ -350,8 +483,8 @@ shinyServer(function(input, output) {
     model_type_str <- switch(model_type,
                              "normal" = "変換なしモデル",
                              "double_log" = "両対数変換モデル",
-                             "y_log" = "click対数変換モデル",
-                             "x_log" = "media対数変換モデル")
+                             "y_log" = "cv対数変換モデル",
+                             "x_log" = "click対数変換モデル")
     
     cat(paste("モデル種類:",model_type_str,sep=""),"\n")
     cat("\n")

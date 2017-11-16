@@ -133,4 +133,35 @@ get_parameters<- function(res_rg){
 }
 
 
+#回帰分析の結果から、必要なパラメータをデータフレームに取得する関数
+get_rob_parameters<- function(res_rg){
+  sum_res <- summary(res_rg)
+  #偏回帰係数の推定値、t値,t値の上側確率を取得
+  out <- as.data.frame(sum_res$coefficients)[2,c("Estimate","t value","Pr(>|t|)")]
+  #カラム名を変更
+  colnames(out) <- c("estimate","t_statistic","t_pval")
+  #調整済R2乗値,F値,F値の上側確率を取得
+  out2_1 <- as.data.frame(sum_res$adj.r.squared)
+  
+  #カラム名を変更
+  colnames(out2_1)<-c("r2")
+  #--- res_rgから直接偏回帰係数の信頼区間を取得
+  #偏回帰係数の推定値の95%信頼区間を取得
+  ci.value <- confint(res_rg)
+  #信頼区間下限
+  low_value <- ci.value[2,1]
+  #信頼区間上限
+  upper_value <- ci.value[2,2]
+  out3 <- cbind(as.data.frame(low_value),as.data.frame(upper_value))
+  colnames(out3) <- c("low_ci","upper_ci")
+  #y切片を取得する
+  out4 <- as.data.frame(sum_res$coefficients[1,c("Estimate")])
+  #カラム名変更
+  colnames(out4)<-c("intercept")
+  
+  #データフレームに繋げる
+  out_total <- cbind(out,out4,out3,out2_1)
+  return(out_total)
+  
+}
 
