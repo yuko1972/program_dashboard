@@ -174,8 +174,15 @@ get_rob_parameters<- function(res_rg){
 anova_analysis<-function(reg){
 # robustbase::lmrobの結果を受けて、切片だけのモデルと当該モデルの差があるかを評価するχ2検定を行う
 #--modelの適合度検定
-  anova.res <-as.data.frame(car::Anova(reg))
-  teststat<-as.data.frame(anova.res[1,c("Chisq","Pr(>Chisq)")])
+  #説明変数の偏回帰係数がNAの場合（=説明変数の分散が0の場合)Anovaはできないので、
+  if(!is.na(reg$coefficients[2])){
+    anova.res <-as.data.frame(car::Anova(reg))
+    teststat<-as.data.frame(anova.res[1,c("Chisq","Pr(>Chisq)")])
+    
+  } else{
+    tmp<-matrix("NA",nrow=1,ncol=2)
+    teststat<-as.data.frame(tmp)
+  }
   colnames(teststat)<-c("Chisq","model_pval")
   return(teststat)
 }
