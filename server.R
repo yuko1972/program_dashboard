@@ -198,38 +198,26 @@ shinyServer(function(input, output) {
 
         
     #-----------------------------------------
-    # モデルの結果をレコードに繋げる
+    # 通常回帰モデルの結果をレコードにマージする
     #-----------------------------------------
     parm_all <- rbind(parm_df.1,parm_df.2,parm_df.3,parm_df.4)
     
     #r2(adjusted)の最高のモデルを特定する
     parm_good_model <- parm_all %>% dplyr::arrange(desc(r2)) %>% head(1)
     
-    #最直近のxの値(media_cnt,cl_cnt)の値を出力に持たせる
-    tmp<-selected_df %>% dplyr::arrange(desc(week_num)) %>% head(1)%>% dplyr::select(x_var)
-    #tmp<-tmp$media_cnt
-    tmp <- tmp[,c(x_var)]
-    parm_good_model$last_x <- tmp
-    
-    #最直近のy(cl_cnt,cv_cnt)の観測値を出力に持たせる
-    #parm_good_model$last_obs.y<- selected_df$cl_cnt[nrow(selected_df)]
-    parm_good_model$last_obs.y<-selected_df[nrow(selected_df),c(y_var)]
-    
+
     #-----------------------------------------
     # Robust(MM推定) original model
     #-----------------------------------------
     res5 <- lmrob(data=selected_df,get(y_var)~ get(x_var),control=lmrob.control(seed=1))
+    #ロバスト回帰分析の結果パラメータを取得
     parm_df.5 <- get_rob_parameters(res5)
     
     #--modelの適合度検定
-    model.null <- lmrob(data=selected_df, get(y_var)~1,cotrol=lmrob.control(seed=1))
-    anova.res <-as.data.frame(anova(res5,model.null))
+    test_statistics<-anova_analysis(res5)
 
-    teststat<-as.data.frame(anova.res[2,c("Test.Stat","Pr(>chisq)")])
-    colnames(teststat)<-c("Test.Stat","model_pval")
-    
     #--分散分析結果とχ2検定結果の％値
-    parm_df.5 <- cbind(parm_df.5,teststat)
+    parm_df.5 <- cbind(parm_df.5,test_statistics)
 
     #モデルの当てはめ結果(ベクトル)
     est_df.5<- fitted(res5)
@@ -250,14 +238,10 @@ shinyServer(function(input, output) {
     parm_df.6 <- get_rob_parameters(res6)
     
     #--modelの適合度検定
-    model.null2 <- lmrob(data=selected_df, I(log(get(y_var)+0.01))~1,cotrol=lmrob.control(seed=1))
-    anova.res <-as.data.frame(anova(res6,model.null2))
-    
-    teststat<-as.data.frame(anova.res[2,c("Test.Stat","Pr(>chisq)")])
-    colnames(teststat)<-c("Test.Stat","model_pval")
-    
+    test_statistics<-anova_analysis(res5)
+
     #--分散分析結果とχ2検定結果の％値
-    parm_df.6 <- cbind(parm_df.6,teststat)
+    parm_df.6 <- cbind(parm_df.6,test_statistics)
     
     #モデルの当てはめ結果(ベクトル)
     est_df.6<- fitted(res6)
@@ -277,14 +261,10 @@ shinyServer(function(input, output) {
     parm_df.7 <- get_rob_parameters(res7)
     
     #--modelの適合度検定
-    model.null <- lmrob(data=selected_df, I(log(get(y_var)+0.01))~1,cotrol=lmrob.control(seed=1))
-    anova.res <-as.data.frame(anova(res7,model.null))
-    
-    teststat<-as.data.frame(anova.res[2,c("Test.Stat","Pr(>chisq)")])
-    colnames(teststat)<-c("Test.Stat","model_pval")
-    
+    test_statistics<-anova_analysis(res7)
+
     #--分散分析結果とχ2検定結果の％値
-    parm_df.7 <- cbind(parm_df.7,teststat)
+    parm_df.7 <- cbind(parm_df.7,test_statistics)
     
     
     #モデルの当てはめ結果(ベクトル)
@@ -301,15 +281,12 @@ shinyServer(function(input, output) {
     #-----------------------------------------
     res8 <- lmrob(data=selected_df,get(y_var)~ I(log(get(x_var)+0.01)),control=lmrob.control(seed=1))
     parm_df.8 <- get_rob_parameters(res8)
+
     #--modelの適合度検定
-    model.null <- lmrob(data=selected_df, get(y_var)~1,cotrol=lmrob.control(seed=1))
-    anova.res <-as.data.frame(anova(res8,model.null))
-    
-    teststat<-as.data.frame(anova.res[2,c("Test.Stat","Pr(>chisq)")])
-    colnames(teststat)<-c("Test.Stat","model_pval")
+    test_statistics<-anova_analysis(res8)
     
     #--分散分析結果とχ2検定結果の％値
-    parm_df.8 <- cbind(parm_df.8,teststat)    
+    parm_df.8 <- cbind(parm_df.8,test_statistics)    
     
     
     #モデルの当てはめ結果(ベクトル)
@@ -328,23 +305,27 @@ shinyServer(function(input, output) {
     #r2(adjusted)の最高のモデルを特定する
     parm_all_robust<- parm_all_robust %>% dplyr::arrange(desc(r2)) %>% head(1)
     
+        
+    #通常回帰モデル群のの最良モデルと便宜上列名を合わせる
+    colnames(parm_all_robust)<-colnames(parm_good_model)
+    
+    #通常回帰の最良モデルと、ロバスト回帰の最良モデルをマージ
+    good_model<-rbind(parm_good_model,parm_all_robust)
+    
+    #r2のより高いモデルを選択する
+    good_model <- good_model %>%  dplyr::arrange(desc(r2)) %>% head(1)
+    
     #最直近のxの値(media_cnt,cl_cnt)の値を出力に持たせる
     tmp<-selected_df %>% dplyr::arrange(desc(week_num)) %>% head(1)%>% dplyr::select(x_var)
     #tmp<-tmp$media_cnt
     tmp <- tmp[,c(x_var)]
-    parm_all_robust$last_x <- tmp
+    good_model$last_x <- tmp
     
     #最直近のy(cl_cnt,cv_cnt)の観測値を出力に持たせる
     #parm_good_model$last_obs.y<- selected_df$cl_cnt[nrow(selected_df)]
-    parm_all_robust$last_obs.y<-selected_df[nrow(selected_df),c(y_var)]
+    good_model$last_obs.y<-selected_df[nrow(selected_df),c(y_var)]
     
-    colnames(parm_all_robust)<-colnames(parm_good_model)
     
-    #繋げる
-    good_model<-rbind(parm_good_model,parm_all_robust)
-    
-    #r2の最良のものを選択する
-    good_model <- good_model %>%  dplyr::arrange(desc(r2)) %>% head(1)
     return(good_model)
 
   }
