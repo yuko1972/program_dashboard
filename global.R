@@ -7,6 +7,9 @@ library(DT)
 library(ggcorrplot)
 library(reshape2)
 library(broom)
+library(robustbase)
+library(car)
+
 #loadfonts(quiet = TRUE)
 
 # Define UI for application that draws a scatterplot
@@ -133,7 +136,7 @@ get_parameters<- function(res_rg){
 }
 
 
-#回帰分析の結果から、必要なパラメータをデータフレームに取得する関数
+#ロバスト回帰分析の結果から、必要なパラメータをデータフレームに取得する関数
 get_rob_parameters<- function(res_rg){
   sum_res <- summary(res_rg)
   #偏回帰係数の推定値、t値,t値の上側確率を取得
@@ -165,3 +168,11 @@ get_rob_parameters<- function(res_rg){
   
 }
 
+anova_analysis<-function(reg){
+# robustbase::lmrobの結果を受けて、切片だけのモデルと当該モデルの差があるかを評価するχ2検定を行う
+#--modelの適合度検定
+  anova.res <-as.data.frame(car::Anova(reg))
+  teststat<-as.data.frame(anova.res[1,c("Chisq","Pr(>Chisq)")])
+  colnames(teststat)<-c("Chisq","model_pval")
+  return(teststat)
+}
