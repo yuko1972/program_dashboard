@@ -345,7 +345,11 @@ shinyServer(function(input, output) {
            "normal" = "変換なしモデル",
            "double_log" = "両対数変換モデル",
            "y_log" = "click対数変換モデル",
-           "x_log" = "media対数変換モデル")
+           "x_log" = "media対数変換モデル",
+           "robust_normal" = "ロバスト変換なしモデル",
+           "robust_double_log" = "ロバスト両対数変換モデル",
+           "robust_y_log" = "ロバストclick対数変換モデル",
+           "robust_x_log" = "ロバストmedia対数変換モデル")
     
     cat(paste("モデル種類:",model_type_str,sep=""),"\n")
     cat("\n")
@@ -465,7 +469,11 @@ shinyServer(function(input, output) {
                              "normal" = "変換なしモデル",
                              "double_log" = "両対数変換モデル",
                              "y_log" = "cv対数変換モデル",
-                             "x_log" = "click対数変換モデル")
+                             "x_log" = "click対数変換モデル",
+                             "robust_normal" = "ロバスト変換なしモデル",
+                             "robust_double_log" = "ロバスト両対数変換モデル",
+                             "robust_y_log" = "ロバストcv対数変換モデル",
+                             "robust_x_log" = "ロバストclick対数変換モデル")
     
     cat(paste("モデル種類:",model_type_str,sep=""),"\n")
     cat("\n")
