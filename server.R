@@ -209,20 +209,19 @@ shinyServer(function(input, output) {
     #-----------------------------------------
     # Robust(MM推定) original model
     #-----------------------------------------
-    res5 <- lmrob(data=selected_df,get(y_var)~ get(x_var),control=lmrob.control(seed=1))
+    #lmrob.controlオブジェクトを先に設定しておく。
+    parm1<-lmrob.control()
+    parm1$seed=1.
+    parm1$maxit.scale=300
+    parm1$max.it=300
+    
+    res5 <- lmrob(data=selected_df,get(y_var)~ get(x_var),control=parm1)
     #ロバスト回帰分析の結果パラメータを取得
     parm_df.5 <- get_rob_parameters(res5)
     
-    #--modelの適合度検定
-    test_statistics<-anova_analysis(res5)
-
-    #--分散分析結果とχ2検定結果の％値
-    parm_df.5 <- cbind(parm_df.5,test_statistics)
-
     #モデルの当てはめ結果(ベクトル)
     est_df.5<- fitted(res5)
-  
-  
+
     #モデル名を追加
     parm_df.5$model_type <- "robust_normal"
     #最直近の期待値
@@ -234,14 +233,8 @@ shinyServer(function(input, output) {
     # ln(y)=ln(a)+b*ln(x)
     # log(0)=INFを避けるために、0.01を加算
     #-----------------------------------------
-    res6 <- lmrob(data=selected_df,I(log(get(y_var)+0.01))~ I(log(get(x_var)+0.01)),control=lmrob.control(seed=1))
+    res6 <- lmrob(data=selected_df,I(log(get(y_var)+0.01))~ I(log(get(x_var)+0.01)),control=parm1)
     parm_df.6 <- get_rob_parameters(res6)
-    
-    #--modelの適合度検定
-    test_statistics<-anova_analysis(res5)
-
-    #--分散分析結果とχ2検定結果の％値
-    parm_df.6 <- cbind(parm_df.6,test_statistics)
     
     #モデルの当てはめ結果(ベクトル)
     est_df.6<- fitted(res6)
@@ -257,15 +250,8 @@ shinyServer(function(input, output) {
     # a^ = exp(a)
     # y = exp(a)*exp(bx)
     #-----------------------------------------
-    res7 <- lmrob(data=selected_df,I(log(get(y_var)+0.01))~ get(x_var),control=lmrob.control(seed=1))
+    res7 <- lmrob(data=selected_df,I(log(get(y_var)+0.01))~ get(x_var),control=parm1)
     parm_df.7 <- get_rob_parameters(res7)
-    
-    #--modelの適合度検定
-    test_statistics<-anova_analysis(res7)
-
-    #--分散分析結果とχ2検定結果の％値
-    parm_df.7 <- cbind(parm_df.7,test_statistics)
-    
     
     #モデルの当てはめ結果(ベクトル)
     est_df.7<- fitted(res7)
@@ -279,16 +265,9 @@ shinyServer(function(input, output) {
     # robust semi_log model(log convert media(x))
     # y = a + b*ln(x)
     #-----------------------------------------
-    res8 <- lmrob(data=selected_df,get(y_var)~ I(log(get(x_var)+0.01)),control=lmrob.control(seed=1))
+    res8 <- lmrob(data=selected_df,get(y_var)~ I(log(get(x_var)+0.01)),control=parm1)
     parm_df.8 <- get_rob_parameters(res8)
 
-    #--modelの適合度検定
-    test_statistics<-anova_analysis(res8)
-    
-    #--分散分析結果とχ2検定結果の％値
-    parm_df.8 <- cbind(parm_df.8,test_statistics)    
-    
-    
     #モデルの当てはめ結果(ベクトル)
     est_df.8<- fitted(res8)
     
@@ -755,9 +734,19 @@ shinyServer(function(input, output) {
       x_var <- "cl_cnt"
     }
 
+    parm1<-lmrob.control()
+    #parm1$seed=1
+    parm1$maxit.scale=400
+    parm1$max.it=300
+    parm1$k.max=300
+    # maxit.scale:default=200,Err C level find_scale() iterationsの収束回数を増やす。
+    # max.it M-step IRWLS(反復重み付け最小二乗法) iterationsの収束回数を増やす.
+    # k.max:(for the fast-S algorithm): maximal number of refinement steps for the “fully” iterated best candidates.
+    
     for (i in all_categories){
 
       selected_df<- type_df %>% dplyr::filter(get(field_type)==i)
+      
       #--モデルを複数実行する
       res_rg<-lm(data=selected_df,get(y_var)~get(x_var))
       res_rg2<-lm(data=selected_df,I(log(get(y_var)+0.01))~ I(log(get(x_var)+0.01)))
@@ -776,19 +765,54 @@ shinyServer(function(input, output) {
       parm_df.4$model_type<-"x_log"
       
       #-----------------------------------------
-      # モデルの結果をレコードに繋げる
+      # モデルの結果(通常回帰)をレコードに繋げる
       #-----------------------------------------
       parm_all <- rbind(parm_df.1,parm_df.2,parm_df.3,parm_df.4)
+      
+      #-----------------------------------------
+      # ロバスト回帰(MM推定)を実施
+      # ロバスト回帰条件として、レコード数が5以上ある場合と条件を付ける。
+      #-----------------------------------------
+
+      if(nrow(selected_df)>=5){
+        res_rg5 <- lmrob(data=selected_df,get(y_var)~ get(x_var),control=parm1)
+        res_rg6<-lmrob(data=selected_df,I(log(get(y_var)+0.01))~ I(log(get(x_var)+0.01)),control=parm1)
+        res_rg7<-lmrob(data=selected_df,I(log(get(y_var)+0.01))~ get(x_var),control=parm1)
+        res_rg8<-lmrob(data=selected_df,get(y_var)~I(log(get(x_var)+0.01)),control=parm1)
+        
+        #ロバスト回帰分析の結果パラメータを取得
+        parm_df.5 <- get_rob_parameters(res_rg5)
+        parm_df.5$model_type <- "robust_normal"
+        parm_df.6 <-get_rob_parameters(res_rg6)
+        parm_df.6$model_type<-"robust_double_log"
+        parm_df.7 <-get_rob_parameters(res_rg7)
+        parm_df.7$model_type<-"robust_y_log"
+        parm_df.8 <-get_rob_parameters(res_rg8)
+        parm_df.8$model_type<-"robust_x_log"
+  
+        
+        #-----------------------------------------
+        # ロバスト回帰モデル(MM推定)の結果をレコードに繋げる
+        #-----------------------------------------
+        parm_robust_all <- rbind(parm_df.5,parm_df.6,parm_df.7,parm_df.8)
+        
+        #chisqとmodel_prの列名が通常回帰モデルと異なるので列名を揃える
+        colnames(parm_robust_all)<-colnames(parm_all)
+        
+        parm_all<-rbind(parm_all,parm_robust_all)
+      }
       
       #r2(adjusted)の最高のモデルを特定する
       parm_good_model <- parm_all %>% dplyr::arrange(desc(r2)) %>% head(1)
       
+      #カテゴリNoを付与
       parm_good_model$cateID <- i
       
-      if (i == 1000 | i == 1){
+      #if (!exists("outdf")){ # デバック用
+      if(i == 1000| i == 1){
         outdf<-parm_good_model 
       }
-      else{
+      else {
         outdf<- rbind(outdf,parm_good_model)
       }
 
