@@ -145,9 +145,12 @@ get_rob_parameters<- function(res_rg){
   colnames(out) <- c("estimate","t_statistic","t_pval")
   #調整済R2乗値,F値,F値の上側確率を取得
   out2_1 <- as.data.frame(sum_res$adj.r.squared)
-  
   #カラム名を変更
   colnames(out2_1)<-c("r2")
+  
+  #anova_analysisを呼び出して、分散分析を行う。
+  out2_2 <-anova_analysis(res_rg)
+  out2<-cbind(out2_1,out2_2)
   #--- res_rgから直接偏回帰係数の信頼区間を取得
   #偏回帰係数の推定値の95%信頼区間を取得
   ci.value <- confint(res_rg)
@@ -163,7 +166,7 @@ get_rob_parameters<- function(res_rg){
   colnames(out4)<-c("intercept")
   
   #データフレームに繋げる
-  out_total <- cbind(out,out4,out3,out2_1)
+  out_total <- cbind(out,out4,out3,out2)
   return(out_total)
   
 }
