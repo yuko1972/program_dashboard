@@ -737,8 +737,8 @@ shinyServer(function(input, output) {
     parm1<-lmrob.control()
     #parm1$seed=1
     parm1$maxit.scale=400
-    parm1$max.it=300
-    parm1$k.max=300
+    parm1$max.it=400
+    parm1$k.max=400
     # maxit.scale:default=200,Err C level find_scale() iterationsの収束回数を増やす。
     # max.it M-step IRWLS(反復重み付け最小二乗法) iterationsの収束回数を増やす.
     # k.max:(for the fast-S algorithm): maximal number of refinement steps for the “fully” iterated best candidates.
@@ -775,45 +775,52 @@ shinyServer(function(input, output) {
       #-----------------------------------------
 
       if(nrow(selected_df)>=5){
-        res_rg5 <- lmrob(data=selected_df,get(y_var)~ get(x_var),control=parm1)
-        res_rg6<-lmrob(data=selected_df,I(log(get(y_var)+0.01))~ I(log(get(x_var)+0.01)),control=parm1)
-        res_rg7<-lmrob(data=selected_df,I(log(get(y_var)+0.01))~ get(x_var),control=parm1)
-        res_rg8<-lmrob(data=selected_df,get(y_var)~I(log(get(x_var)+0.01)),control=parm1)
-        
-        #ロバスト回帰分析の結果パラメータを取得
-        parm_df.5 <- get_rob_parameters(res_rg5)
-        parm_df.5$model_type <- "robust_normal"
-        parm_df.6 <-get_rob_parameters(res_rg6)
-        parm_df.6$model_type<-"robust_double_log"
-        parm_df.7 <-get_rob_parameters(res_rg7)
-        parm_df.7$model_type<-"robust_y_log"
-        parm_df.8 <-get_rob_parameters(res_rg8)
-        parm_df.8$model_type<-"robust_x_log"
-  
-        
-        #-----------------------------------------
-        # ロバスト回帰モデル(MM推定)の結果をレコードに繋げる
-        #-----------------------------------------
-        parm_robust_all <- rbind(parm_df.5,parm_df.6,parm_df.7,parm_df.8)
-        
-        #chisqとmodel_prの列名が通常回帰モデルと異なるので列名を揃える
-        colnames(parm_robust_all)<-colnames(parm_all)
-        
-        parm_all<-rbind(parm_all,parm_robust_all)
+        if( sd( selected_df[,y_var])  != 0 ){
+        #
+          res_rg5 <- lmrob(data=selected_df,get(y_var)~ get(x_var),control=parm1)
+          res_rg6<-lmrob(data=selected_df,I(log(get(y_var)+0.01))~ I(log(get(x_var)+0.01)),control=parm1)
+          res_rg7<-lmrob(data=selected_df,I(log(get(y_var)+0.01))~ get(x_var),control=parm1)
+          res_rg8<-lmrob(data=selected_df,get(y_var)~I(log(get(x_var)+0.01)),control=parm1)
+          
+          #ロバスト回帰分析の結果パラメータを取得
+          parm_df.5 <- get_rob_parameters(res_rg5)
+          parm_df.5$model_type <- "robust_normal"
+          parm_df.6 <-get_rob_parameters(res_rg6)
+          parm_df.6$model_type<-"robust_double_log"
+          parm_df.7 <-get_rob_parameters(res_rg7)
+          parm_df.7$model_type<-"robust_y_log"
+          parm_df.8 <-get_rob_parameters(res_rg8)
+          parm_df.8$model_type<-"robust_x_log"
+    
+          
+          #-----------------------------------------
+          # ロバスト回帰モデル(MM推定)の結果をレコードに繋げる
+          #-----------------------------------------
+          parm_robust_all <- rbind(parm_df.5,parm_df.6,parm_df.7,parm_df.8)
+          
+          #chisqとmodel_prの列名が通常回帰モデルと異なるので列名を揃える
+          colnames(parm_robust_all)<-colnames(parm_all)
+          
+          parm_all<-rbind(parm_all,parm_robust_all)
+
+        }
       }
       
       #r2(adjusted)の最高のモデルを特定する
-      parm_good_model <- parm_all %>% dplyr::arrange(desc(r2)) %>% head(1)
+      #文字列の"NA"が入力されたデータは省く
+      parm_good_model <- parm_all %>% dplyr::filter(r2 !="NA" & r2 != "NaN")%>%
+        dplyr::arrange(desc(r2)) %>% head(1)
       
-      #カテゴリNoを付与
-      parm_good_model$cateID <- i
+      #もし、通常回帰モデルの結果が全てR2=NaNで(つまり計算されない）、ロバスト回帰もなされなかった場合のエラートラップを作っておく
+      #その時はoutdfにはレコードを追加しないで抜ける。
+      if(nrow(parm_good_model)==1){
       
-      #if (!exists("outdf")){ # デバック用
-      if(i == 1000| i == 1){
-        outdf<-parm_good_model 
-      }
-      else {
-        outdf<- rbind(outdf,parm_good_model)
+        #カテゴリNoを付与
+        parm_good_model$cateID <- i
+        
+        #if (exists("outdf")==FALSE){ # デバック用
+        if(i == 1000||i == 1){
+          outdf<-parm_good_model } else{outdf<- rbind(outdf,parm_good_model)}
       }
 
     #--for ループ終わり
