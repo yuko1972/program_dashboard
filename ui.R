@@ -218,15 +218,21 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                  tabPanel("about",
                           titlePanel("データ情報"),
                           sidebarLayout(
-                            sidebarPanel(),
-                            mainPanel(
+                            sidebarPanel(
                               helpText("集計元データ: islog.sales_log,islog.isweb_haisin_click_log, islog_haisin_atm_click_log"),
                               div("データ取得期間：2017/01/02～2017/11/12"),
+                              br(),
                               div("データ粒度:週次,月曜始まり日曜終わり"),
                               div("2017/1/1は、1日しかない週となったため割愛"),
                               div("集計対象：service_type:AT/ATMのみ、非ポイントのみ、RKのみ"),
-                              br(),
+                              br()
+                            ),
+                            mainPanel(
                               helpText("更新履歴"),
+                              p("更新履歴(2017/11/17)"),
+                              div("compare_simページで、cv数をclick数で説明するモデルのERRに対処。",style="color:blue"),
+                              div("カテゴリのデータの目的変数のsdが0の時はロバスト回帰は行わないとした。パラメータはNAとして出力した。",style="color:blue"),
+                              br(),
                               p("更新履歴(2017/11/16)"),
                               div("Simulationページで、ロバスト回帰モデルを取り入れた。",style="color:green"),
                               div("compare_simページで、ロバスト回帰モデルを含む8種類のモデルから最良のモデルを選択するようにした。",style="color:green"),
