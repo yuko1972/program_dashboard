@@ -735,15 +735,15 @@ shinyServer(function(input, output) {
     }
 
     parm1<-lmrob.control()
-    #parm1$seed=1
+   # parm1$seed=1546
     parm1$maxit.scale=400
     parm1$max.it=400
-    parm1$k.max=400
+    parm1$k.max=500
     # maxit.scale:default=200,Err C level find_scale() iterationsの収束回数を増やす。
     # max.it M-step IRWLS(反復重み付け最小二乗法) iterationsの収束回数を増やす.
     # k.max:(for the fast-S algorithm): maximal number of refinement steps for the “fully” iterated best candidates.
     
-    for (i in all_categories){
+    for (i in all_categories[150:155]){
 
       selected_df<- type_df %>% dplyr::filter(get(field_type)==i)
       
@@ -778,17 +778,42 @@ shinyServer(function(input, output) {
         if( sd( selected_df[,y_var])  != 0 ){
         #
           res_rg5 <- lmrob(data=selected_df,get(y_var)~ get(x_var),control=parm1)
-          res_rg6<-lmrob(data=selected_df,I(log(get(y_var)+0.01))~ I(log(get(x_var)+0.01)),control=parm1)
-          res_rg7<-lmrob(data=selected_df,I(log(get(y_var)+0.01))~ get(x_var),control=parm1)
+          
+          
+          error.flag6<-try(lmrob(data=selected_df,I(log(get(y_var)+0.01))~ I(log(get(x_var)+0.01)),control=parm1))
+          {
+            if(error.flag6$converged=="FALSE"){
+              parm1$k.max=1000
+              error.flag6<-try(lmrob(data=selected_df,I(log(get(y_var)+0.01))~ I(log(get(x_var)+0.01)),control=parm1))
+            }
+            res_rg6<-error.flag6
+          }
+          parm_df.6 <-get_rob_parameters(res_rg6)
+          parm_df.6$model_type<-"robust_double_log"
+                                
+          
+          #lmrobの結果がerrorになる場合当該モデルを推定しない。
+          error.flag<-try(lmrob(data=selected_df,I(log(get(y_var)+0.01))~ get(x_var),control=parm1),silent=TRUE)
+          {
+            if(class(error.flag) =="try-error" ){
+              #もし何もエラーだった時は、このモデルを推定しない。
+              print("error")}
+            else if ( class(error.flag)=="lmrob" ){
+              res_rg7<-error.flag
+              parm_df.7 <- get_rob_parameters(res_rg7)
+              parm_df.7$model_type<-"robust_y_log"
+            }
+          }
+          
+    
           res_rg8<-lmrob(data=selected_df,get(y_var)~I(log(get(x_var)+0.01)),control=parm1)
           
           #ロバスト回帰分析の結果パラメータを取得
           parm_df.5 <- get_rob_parameters(res_rg5)
           parm_df.5$model_type <- "robust_normal"
-          parm_df.6 <-get_rob_parameters(res_rg6)
-          parm_df.6$model_type<-"robust_double_log"
-          parm_df.7 <-get_rob_parameters(res_rg7)
-          parm_df.7$model_type<-"robust_y_log"
+
+          
+
           parm_df.8 <-get_rob_parameters(res_rg8)
           parm_df.8$model_type<-"robust_x_log"
     
@@ -818,9 +843,11 @@ shinyServer(function(input, output) {
         #カテゴリNoを付与
         parm_good_model$cateID <- i
         
-        #if (exists("outdf")==FALSE){ # デバック用
-        if(i == 1000||i == 1){
-          outdf<-parm_good_model } else{outdf<- rbind(outdf,parm_good_model)}
+        if (exists("outdf")==FALSE){ # デバック用
+        #if(i == 1000||i == 1){
+          outdf<-parm_good_model } else{
+            outdf<- rbind(outdf,parm_good_model)
+            }
       }
 
     #--for ループ終わり
