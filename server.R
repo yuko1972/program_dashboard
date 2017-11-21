@@ -739,6 +739,8 @@ shinyServer(function(input, output) {
     parm1$maxit.scale=400
     parm1$max.it=400
     parm1$k.max=500
+    parm1$setting="KS2011"
+    
     # maxit.scale:default=200,Err C level find_scale() iterationsの収束回数を増やす。
     # max.it M-step IRWLS(反復重み付け最小二乗法) iterationsの収束回数を増やす.
     # k.max:(for the fast-S algorithm): maximal number of refinement steps for the “fully” iterated best candidates.
@@ -776,44 +778,102 @@ shinyServer(function(input, output) {
 
       if(nrow(selected_df)>=5){
         if( sd( selected_df[,y_var])  != 0 ){
-        #
-          res_rg5 <- lmrob(data=selected_df,get(y_var)~ get(x_var),control=parm1)
+         warning_mes1<-"simpleWarning in lmrob.S(x, y, control = control, mf = mf): S-estimated scale == 0:  Probably exact fit; check your data\n"
+         warning_mes2<-"simpleWarning in lmrob.S(x, y, control = control, mf = mf): find_scale() did not converge in 'maxit.scale' (= 400) iterations\n"  
+         
+         error.flag5<-tryCatch( lmrob(data=selected_df,get(y_var)~ get(x_var), control=parm1),
+                                  warning=function(w){
+                                    if(paste(w)==warning_mes1){
+                                      print(paste("lmrob.S Warning",i,"model6"));"NaN"
+                                    }
+                                    },
+                                    error=function(e){print(paste("error:model5:",i,e));"NaN"},
+                                finally={
+                                  #print(paste("model5",i))
+                                }
+                                    )
+            res_rg5 <- error.flag5
+            #ロバスト回帰分析の結果パラメータを取得
+            #res_rg5が、lmrobオブジェクトではなく"Nan"の場合、全てNAのデータを返す。
+            parm_df.5 <- get_rob_parameters(res_rg5)
+            parm_df.5$model_type <- "robust_normal"
+         
           
-          
-          error.flag6<-try(lmrob(data=selected_df,I(log(get(y_var)+0.01))~ I(log(get(x_var)+0.01)),control=parm1))
-          {
-            if(error.flag6$converged=="FALSE"){
-              parm1$k.max=1000
-              error.flag6<-try(lmrob(data=selected_df,I(log(get(y_var)+0.01))~ I(log(get(x_var)+0.01)),control=parm1))
-            }
-            res_rg6<-error.flag6
-          }
+          #-- ロバストy対数変換モデル
+          error.flag6<-tryCatch(lmrob(data=selected_df,I(log(get(y_var)+0.01))~ I(log(get(x_var)+0.01)),control=parm1),
+                                warning=function(w){
+                                  if(paste(w)==warning_mes1){
+                                    print(paste("lmrob.S Warning",i,"model6"));"NaN" 
+                                  }
+                                  else if( paste(w)== warning_mes2){
+                                    print("Did not converge if use default parameter");
+                                    #syori
+                                    parm1$maxit.scale<-4000
+                                    res<-lmrob(data=selected_df,I(log(get(y_var)+0.01))~ I(log(get(x_var)+0.01)),control=parm1)
+                                    print(paste("change parameter",i))
+                                    return(res)
+                                  }
+                                },
+                                error=function(e){},
+                                finally={
+                                  #print(paste("model6",i))
+                                },
+                                silent=TRUE
+                                )
+          res_rg6<-error.flag6
+                          
+          #この段階で、res_rg6は、lmrobオブジェクトになっている。
           parm_df.6 <-get_rob_parameters(res_rg6)
           parm_df.6$model_type<-"robust_double_log"
-                                
+   
           
           #lmrobの結果がerrorになる場合当該モデルを推定しない。
-          error.flag<-try(lmrob(data=selected_df,I(log(get(y_var)+0.01))~ get(x_var),control=parm1),silent=TRUE)
-          {
-            if(class(error.flag) =="try-error" ){
-              #もし何もエラーだった時は、このモデルを推定しない。
-              print("error:",i)}
-            else if ( class(error.flag)=="lmrob" ){
-              res_rg7<-error.flag
-              parm_df.7 <- get_rob_parameters(res_rg7)
-              parm_df.7$model_type<-"robust_y_log"
-            }
-          }
+          error.flag7<-tryCatch(lmrob(data=selected_df,I(log(get(y_var)+0.01))~ get(x_var),control=parm1),
+                    warning=function(w){
+                      if(paste(w)==warning_mes1){
+                        print( paste("lmrob.S Warning",i,"model7") );"NaN" 
+                      } else{
+                        print(paste(w));"NaN"
+                      }
+                    } ,
+                    error=function(e){
+                      print(paste(e,"error"));"NaN"
+                    },
+                    finally = {
+                      #print(paste("model7",i))
+                      
+                    }
+           )
+          res_rg7<- error.flag7
+          parm_df.7 <- get_rob_parameters(res_rg7)
+          parm_df.7$model_type<-"robust_y_log"
+          
+      #    {
+      #      if(class(error.flag7) =="try-error" ){
+      #        #もし何もエラーだった時は、このモデルを推定しない。
+      #        print("error:",i)}
+      #      else if ( class(error.flag)=="lmrob" ){
+      #        res_rg7<-error.flag
+      #        parm_df.7 <- get_rob_parameters(res_rg7)
+      #        parm_df.7$model_type<-"robust_y_log"
+      #      }
+      #    }
           
     
-          res_rg8<-lmrob(data=selected_df,get(y_var)~I(log(get(x_var)+0.01)),control=parm1)
+          error.flag8<-tryCatch(lmrob(data=selected_df,get(y_var)~I(log(get(x_var)+0.01)),control=parm1),
+                                warning=function(w){
+                                  if(paste(w)==warning_mes1){
+                                    paste("lmrob.S Warning",i,"model8");"NaN" 
+                                  }
+                                } ,
+                                error=function(e){print(paste(e)); "NaN" },
+                                finally={
+                                  #print(paste("model8",i))
+                                }
+                        )
+     
           
-          #ロバスト回帰分析の結果パラメータを取得
-          parm_df.5 <- get_rob_parameters(res_rg5)
-          parm_df.5$model_type <- "robust_normal"
-
-          
-
+          res_rg8<- error.flag8
           parm_df.8 <-get_rob_parameters(res_rg8)
           parm_df.8$model_type<-"robust_x_log"
     
