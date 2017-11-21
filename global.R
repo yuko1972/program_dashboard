@@ -106,59 +106,31 @@ scate_exist <- scate_exist %>% dplyr::mutate(choise_label=paste(as.character(cat
 
 #回帰分析の結果から、必要なパラメータをデータフレームに取得する関数
 get_parameters<- function(res_rg){
-  sum_res <- summary(res_rg)
-  #偏回帰係数の推定値、t値,t値の上側確率を取得
-  out <- tidy(sum_res)[2,c("estimate","statistic","p.value")]
-  #カラム名を変更
-  colnames(out) <- c("estimate","t_statistic","t_pval")
-  #調整済R2乗値,F値,F値の上側確率を取得
-  out2 <- glance(sum_res)[1,c("adj.r.squared","statistic","p.value")]
-  #カラム名を変更
-  colnames(out2)<-c("r2","f_statistic","f_pval")
-  #--- res_rgから直接偏回帰係数の信頼区間を取得
-  #偏回帰係数の推定血の95%信頼区間を取得
-  ci.value <- confint(res_rg)
-  #信頼区間下限
-  low_value <- ci.value[2,1]
-  #信頼区間上限
-  upper_value <- ci.value[2,2]
-  out3 <- cbind(as.data.frame(low_value),as.data.frame(upper_value))
-  colnames(out3) <- c("low_ci","upper_ci")
-  #y切片を取得する
-  out4 <- as.data.frame(tidy(sum_res)[1,]$estimate)
-  #カラム名変更
-  colnames(out4)<-c("intercept")
-  
-  #データフレームに繋げる
-  out_total <- cbind(out,out4,out3,out2)
-  return(out_total)
-  
-}
+  #summaryを取ったときに"Warning message:In summary.lm(obj) : essentially perfect fit: summary may be unreliable"とwarning
+  message_str <- "simpleWarning in summary.lm(res_rg2): essentially perfect fit: summary may be unreliable\n"
 
-
-#ロバスト回帰分析の結果から、必要なパラメータをデータフレームに取得する関数
-get_rob_parameters<- function(res_rg){
-  sum_res <- summary(res_rg)
+  #lm.summaryがワーニングとなるかどうかを評価して、ワーニングだった場合は、ダミーのresponseデータを返す
+  testerror <- tryCatch(summary(res_rg),
+                      warning=function(w){
+                        if(paste(w)==message_str){
+                          print(paste(w)); 
+                          "NaN"
+                        }
+                      }
+              )
   
-  if(is.na(res_rg$coefficients[2]) | res_rg$scale==0){
-    out_total<-as.data.frame(matrix("NA",nrow=1,ncol=9))
-    colnames(out_total)<-c("estimate","t_statistic","t_pval","intercept","low_ci","upper_ci","r2","Chisq","model_pval")
-  }
-  else{
+  if(class(testerror)=="summary.lm"){
+    sum_res <- testerror
     #偏回帰係数の推定値、t値,t値の上側確率を取得
-    out <- as.data.frame(sum_res$coefficients)[2,c("Estimate","t value","Pr(>|t|)")]
+    out <- tidy(sum_res)[2,c("estimate","statistic","p.value")]
     #カラム名を変更
     colnames(out) <- c("estimate","t_statistic","t_pval")
     #調整済R2乗値,F値,F値の上側確率を取得
-    out2_1 <- as.data.frame(sum_res$adj.r.squared)
+    out2 <- glance(sum_res)[1,c("adj.r.squared","statistic","p.value")]
     #カラム名を変更
-    colnames(out2_1)<-c("r2")
-    
-    #anova_analysisを呼び出して、分散分析を行う。
-    out2_2 <-anova_analysis(res_rg)
-    out2<-cbind(out2_1,out2_2)
+    colnames(out2)<-c("r2","f_statistic","f_pval")
     #--- res_rgから直接偏回帰係数の信頼区間を取得
-    #偏回帰係数の推定値の95%信頼区間を取得
+    #偏回帰係数の推定血の95%信頼区間を取得
     ci.value <- confint(res_rg)
     #信頼区間下限
     low_value <- ci.value[2,1]
@@ -167,12 +139,69 @@ get_rob_parameters<- function(res_rg){
     out3 <- cbind(as.data.frame(low_value),as.data.frame(upper_value))
     colnames(out3) <- c("low_ci","upper_ci")
     #y切片を取得する
-    out4 <- as.data.frame(sum_res$coefficients[1,c("Estimate")])
+    out4 <- as.data.frame(tidy(sum_res)[1,]$estimate)
     #カラム名変更
     colnames(out4)<-c("intercept")
     
     #データフレームに繋げる
     out_total <- cbind(out,out4,out3,out2)
+  }
+  if(class(testerror) != "summary.lm"){
+    out_total<-as.data.frame(matrix("NA",nrow=1,ncol=9))
+    colnames(out_total)<-c("estimate","t_statistic","t_pval","intercept","low_ci","upper_ci","r2","f_statistic","f_pval")
+  }
+  return(out_total)
+}
+
+
+#ロバスト回帰分析の結果から、必要なパラメータをデータフレームに取得する関数
+get_rob_parameters<- function(res_rg){
+  #tryCatch()をメインに使ったことで、解がwarning(信頼できない)とメッセージがでるようなデータの場合は、ロバスト回帰の結果ではなく、
+  # "NaN"をリターンさせるようにした。
+  # 引数がlmrobオブジェクトでなければ、全てNAのデータオブジェクトを返すとした。
+  if(class(res_rg)=="lmrob"){
+    sum_res <-summary(res_rg)
+              
+    if(is.na(res_rg$coefficients[2]) | res_rg$scale==0){
+      out_total<-as.data.frame(matrix("NA",nrow=1,ncol=9))
+      colnames(out_total)<-c("estimate","t_statistic","t_pval","intercept","low_ci","upper_ci","r2","Chisq","model_pval")
+    }
+    else{
+      #偏回帰係数の推定値、t値,t値の上側確率を取得
+      out <- as.data.frame(sum_res$coefficients)[2,c("Estimate","t value","Pr(>|t|)")]
+      #カラム名を変更
+      colnames(out) <- c("estimate","t_statistic","t_pval")
+      #調整済R2乗値,F値,F値の上側確率を取得
+      out2_1 <- as.data.frame(sum_res$adj.r.squared)
+      #カラム名を変更
+      colnames(out2_1)<-c("r2")
+      
+      #anova_analysisを呼び出して、分散分析を行う。
+      out2_2 <-anova_analysis(res_rg)
+      out2<-cbind(out2_1,out2_2)
+      #--- res_rgから直接偏回帰係数の信頼区間を取得
+      #偏回帰係数の推定値の95%信頼区間を取得
+      ci.value <- confint(res_rg)
+      #信頼区間下限
+      low_value <- ci.value[2,1]
+      #信頼区間上限
+      upper_value <- ci.value[2,2]
+      out3 <- cbind(as.data.frame(low_value),as.data.frame(upper_value))
+      colnames(out3) <- c("low_ci","upper_ci")
+      #y切片を取得する
+      out4 <- as.data.frame(sum_res$coefficients[1,c("Estimate")])
+      #カラム名変更
+      colnames(out4)<-c("intercept")
+      
+      #データフレームに繋げる
+      out_total <- cbind(out,out4,out3,out2)
+    }
+  }
+  # 受けとったオブジェクトが、"simpleWarning in lmrob.S(x, y, control = control, mf = mf): S-estimated scale == 0:  Probably exact fit; check your data\n"
+  # のワーニングでデータの原因によりパラメータが求まらないような場合、"Nan"を受けとるので、リターンする内容を全て"NA"で返す
+  else if (class(res_rg) != "lmrob"){
+    out_total<-as.data.frame(matrix("NA",nrow=1,ncol=9))
+    colnames(out_total)<-c("estimate","t_statistic","t_pval","intercept","low_ci","upper_ci","r2","Chisq","model_pval")
   }
   
   return(out_total)
