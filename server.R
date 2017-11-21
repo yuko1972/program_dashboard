@@ -743,7 +743,7 @@ shinyServer(function(input, output) {
     # max.it M-step IRWLS(反復重み付け最小二乗法) iterationsの収束回数を増やす.
     # k.max:(for the fast-S algorithm): maximal number of refinement steps for the “fully” iterated best candidates.
     
-    for (i in all_categories[150:155]){
+    for (i in all_categories){
 
       selected_df<- type_df %>% dplyr::filter(get(field_type)==i)
       
@@ -797,7 +797,7 @@ shinyServer(function(input, output) {
           {
             if(class(error.flag) =="try-error" ){
               #もし何もエラーだった時は、このモデルを推定しない。
-              print("error")}
+              print("error:",i)}
             else if ( class(error.flag)=="lmrob" ){
               res_rg7<-error.flag
               parm_df.7 <- get_rob_parameters(res_rg7)
@@ -843,8 +843,8 @@ shinyServer(function(input, output) {
         #カテゴリNoを付与
         parm_good_model$cateID <- i
         
-        if (exists("outdf")==FALSE){ # デバック用
-        #if(i == 1000||i == 1){
+        #if (exists("outdf")==FALSE){ # デバック用
+        if(i == 1000||i == 1){
           outdf<-parm_good_model } else{
             outdf<- rbind(outdf,parm_good_model)
             }
