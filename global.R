@@ -28,10 +28,10 @@ df_cvuu <- read.csv(fin.4,header=T,sep=",")
 df_m <- read.csv(fin.5,header=T,sep=",")
 
 #- merge KPI file and create dataset
-df <- left_join(x=df_cl,y=df_cv,by=c("category_low_id"="category_low_id","week_num"="week_num"))
-df <- left_join(x=df,y=df_cluu,by=c("category_low_id"="category_low_id","week_num"="week_num"))
-df <- left_join(x=df,y=df_cvuu,by=c("category_low_id"="category_low_id","week_num"="week_num"))
-df <- left_join(x=df,y=df_m,by=c("category_low_id"="category_low_id","week_num"="week_num"))
+df <- left_join(x=df_cl,y=df_cv,by=c("category_low_id"="category_low_id","week_num"="week_num","region"="region"))
+df <- left_join(x=df,y=df_cluu,by=c("category_low_id"="category_low_id","week_num"="week_num","region"="region"))
+df <- left_join(x=df,y=df_cvuu,by=c("category_low_id"="category_low_id","week_num"="week_num","region"="region"))
+df <- left_join(x=df,y=df_m,by=c("category_low_id"="category_low_id","week_num"="week_num","region"="region"))
 
 #- 2017/1/1(=week_num = 52となってしまう週は削除する)
 df <- df %>% dplyr::filter(week_num != 52)
@@ -62,10 +62,10 @@ mdf_cvuu <- read.csv(fin.9,header=T,sep=",")
 mdf_m <- read.csv(fin.10,header=T,sep=",")
 
 #- merge KPI dataset
-dfm <- left_join(x=mdf_cl,y=mdf_cv,by=c("category_min_id"="category_min_id","week_num"="week_num"))
-dfm <- left_join(x=dfm,y=mdf_cluu,by=c("category_min_id"="category_min_id","week_num"="week_num"))
-dfm <- left_join(x=dfm,y=mdf_cvuu,by=c("category_min_id"="category_min_id","week_num"="week_num"))
-dfm <- left_join(x=dfm,y=mdf_m,by=c("category_min_id"="category_min_id","week_num"="week_num"))
+dfm <- left_join(x=mdf_cl,y=mdf_cv,by=c("category_min_id"="category_min_id","week_num"="week_num","region"="region"))
+dfm <- left_join(x=dfm,y=mdf_cluu,by=c("category_min_id"="category_min_id","week_num"="week_num","region"="region"))
+dfm <- left_join(x=dfm,y=mdf_cvuu,by=c("category_min_id"="category_min_id","week_num"="week_num","region"="region"))
+dfm <- left_join(x=dfm,y=mdf_m,by=c("category_min_id"="category_min_id","week_num"="week_num","region"="region"))
 
 #--listup existing min categories in database
 exist_mincate_list<-unique(dfm$category_min_id)
