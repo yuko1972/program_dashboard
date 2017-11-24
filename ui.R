@@ -7,6 +7,10 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                           titlePanel("小カテゴリ毎週次データの散布図"),
                           sidebarLayout(
                             sidebarPanel(
+                              selectInput("var_region_s",
+                                          label="東京、新潟を選択して下さい",
+                                          choices = c("Niigata","Tokyo"),
+                                        selected ="Niigata"),
                               selectInput("var_sm",
                                           label="小カテゴリを選んで下さい",
                                           choices = scate_exist$choise_label,
@@ -28,7 +32,7 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                             ),
                             
                             mainPanel(
-                              # "distPlot"という名前でreactiveなPlotタイプの出力を宣言する
+                               # "distPlot"という名前でreactiveなPlotタイプの出力を宣言する
                                 plotOutput("scatterPlot")
                               
                             )
@@ -41,6 +45,11 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                           titlePanel("小カテゴリ毎週次データKPI間相関行列"),
                           sidebarLayout(
                             sidebarPanel(
+                              selectInput("var_region_cr",
+                                          label="東京、新潟を選択してください",
+                                          choices= c("Niigata","Tokyo"),
+                                          selected="Niigata"
+                                          ),
                               selectInput("var_sm_cr",
                                           label="小カテゴリを選んで下さい",
                                           choices = scate_exist$choise_label,
@@ -61,6 +70,10 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                           titlePanel("極小カテゴリ毎週次データの散布図"),
                           sidebarLayout(
                             sidebarPanel(
+                              selectInput("var_region_m",
+                                          label="東京、新潟を選択して下さい",
+                                          choices = c("Niigata","Tokyo"),
+                                          selected ="Niigata"),
                               selectInput("var_min",
                                           label="極小カテゴリを選んで下さい",
                                           choices = mcate_exist$choise_label,
@@ -96,6 +109,11 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                           titlePanel("極小カテゴリ毎週次デーKPI間相関行列"),
                           sidebarLayout(
                             sidebarPanel(
+                              selectInput("var_region_cr_m",
+                                          label="東京、新潟を選択してください",
+                                          choices= c("Niigata","Tokyo"),
+                                          selected="Niigata"
+                              ),
                               selectInput("min_cate",
                                           label="極小カテゴリを選んで下さい",
                                           # 実際にデータに存在する極小カテしか選べない
@@ -118,7 +136,12 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                           titlePanel("カテゴリ：傾向"),
                           sidebarLayout(
                             sidebarPanel(
-                              radioButtons("radio",
+                              selectInput("var_region_ts",
+                                          label="東京か新潟を選んで下さい",
+                                          choices = c("Niigata","Tokyo"),
+                                          selected = "Niigata"),
+                              br(),
+                                          radioButtons("radio",
                                           label = "小カテか、極小カテかを選んでください。",
                                           choices = c("小カテ"= "1", "極小カテ" ="2")),
                               
@@ -162,6 +185,11 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                           titlePanel("カテゴリ別予測値"),
                           sidebarLayout(
                             sidebarPanel(
+                              selectInput("var_region_sim",
+                                          label="東京か新潟を選んで下さい",
+                                          choices = c("Niigata","Tokyo"),
+                                          selected = "Niigata"),
+                              br(),
                               radioButtons("radio_s",
                                            label = "小カテか、極小カテかを選んでください。",
                                            choices = c("小カテ"= "1", "極小カテ" ="2"),
@@ -192,10 +220,15 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                             
                           )
                           ),
-                 tabPanel("compare_sim",
+                 tabPanel("Compare_sim",
                           titlePanel("カテゴリ間のモデル精度比較"),
                           sidebarLayout(
                             sidebarPanel(
+                              selectInput("var_region_comp",
+                                          label="東京か新潟を選んで下さい",
+                                          choices = c("Niigata","Tokyo"),
+                                          selected = "Niigata"),
+                              br(),
                               radioButtons("radio_cp",
                                            label = "小カテか、極小カテかを選んでください。",
                                            choices = c("小カテ"= "1", "極小カテ" ="2")),
@@ -220,7 +253,7 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                           sidebarLayout(
                             sidebarPanel(
                               helpText("集計元データ: islog.sales_log,islog.isweb_haisin_click_log, islog_haisin_atm_click_log"),
-                              div("データ取得期間：2017/01/02～2017/11/12"),
+                              div("データ取得期間：2017/01/02～2017/11/19"),
                               br(),
                               div("データ粒度:週次,月曜始まり日曜終わり"),
                               div("2017/1/1は、1日しかない週となったため割愛"),
@@ -229,6 +262,14 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                             ),
                             mainPanel(
                               helpText("更新履歴"),
+                              p("更新履歴(2017/11/24)"),
+                              div("全てのページで、地域(新潟か東京）別の分析を可能にした。",style="color:darkgreen"),
+                              div("データの更新:2017/11/19までデータ取り込み",style="color:darkgreen"),
+                              div("compare_simで、データのレコード数が0になる場合スキップ処理を追加",style="color:darkgreen"),
+                              div("小カテのデータにregion変数(Niigata/Tokyo)を追加して再集計した。",style="color:darkgreen"),
+                              div("極小カテのデータにregion変数を追加して再集計した。",style="color:darkgreen"),
+                              div("東京か、新潟を選択したときにレコード数が0になるカテゴリについては選択できないようにすべき",style="color:red"),
+                              br(),
                               p("更新履歴(2017/11/21)"),
                               div("compare_simページで、ワーニングの例外処理を追加。",style="color:cyan"),
                               div("・データが6行以上でもxの分散が小さいと計算できない",style="color:cyan"),
