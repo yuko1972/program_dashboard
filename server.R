@@ -23,9 +23,25 @@ shinyServer(function(input, output) {
   })
   
 
+  region_input <- reactive({
+    region <- switch(input$var_region_s,
+                     "Niigata"="Niigata",
+                     "Tokyo"="Tokyo")
+    return(region)
+  })
+  
+
+  output$type_region<-renderText({
+    paste("地域",region_input(),sep=":")
+  })
+  
   output$scatterPlot <- renderPlot({
     input_cate <- sm_id_input()
-    selected_df <- df %>% dplyr::filter(category_low_id == input_cate)
+    #東京か新潟かを選ぶ。
+
+
+    selected_df <- df %>% dplyr::filter(category_low_id == input_cate )
+    selected_df <- selected_df %>% dplyr::filter(region == input$var_region_s)
     
     #checkbox_1の値を判断する
     
@@ -38,7 +54,7 @@ shinyServer(function(input, output) {
     catename <- input$var_sm
     p<-ggplot(selected_df,aes(y=get(input$var_y), x=get(input$var_x))
     )+geom_point()+ylab(input$var_y)+xlab(input$var_x)
-    p<-p+ggtitle(paste("散布図",catename,sep=":"))
+    p<-p+ggtitle(paste("散布図",catename,"地域",input$var_region_s,sep=":"))
     #p<-p+theme(text = element_text(family = font_A))
     #p <-p + theme_bw(base_family="HiraMaruProN-W3")
     p <-p + theme_bw(base_family="IPAPMincho")
@@ -60,15 +76,17 @@ shinyServer(function(input, output) {
     #reactive function sm_id_input
     input_cate<- sm_id_input_c()
     selected_df <-df %>% dplyr::filter(category_low_id == input_cate)
+    # 地域の選択変数：var_region_cr
+    selected_df <- selected_df %>% dplyr::filter(region == input$var_region_cr)
     
     if( input$checkbox_3 == TRUE){
     #week_num=12が異常値なのでこれを全て削除
       selected_df <- selected_df %>% dplyr::filter(week_num != 12)
     }
     
-    corr<-round(cor(selected_df[3:8]),3)
+    corr<-round(cor(selected_df[4:9]),3)
     #p_value
-    p.mat<- cor_pmat(selected_df[3:8])
+    p.mat<- cor_pmat(selected_df[4:9])
     p<-ggcorrplot(corr,lab=TRUE,lab_size=4,
                   type="lower",p.mat=p.mat,insig="pch",title="Correlation matrix between KPI")
     plot(p) 
@@ -114,6 +132,9 @@ shinyServer(function(input, output) {
       #week_num=12が異常値なのでこれを全て削除
       selected_df <- selected_df %>% dplyr::filter(week_num != 12)
     }
+    #UIのregion変数を読んで、地域を新潟、東京のいずれかに絞る。
+    #小カテ、極小カテ共通
+    selected_df <- selected_df %>% dplyr::filter(region == input$var_region_sim)
 
     #obj_var ==1 説明変数がmedia_cnt,目的変数がcl_cntのモデル
     #obj_var ==1 説明変数がcl_cnt,目的変数がcv_cntのモデル
@@ -331,6 +352,10 @@ shinyServer(function(input, output) {
            "robust_x_log" = "ロバストmedia対数変換モデル")
     
     cat(paste("モデル種類:",model_type_str,sep=""),"\n")
+    region_name<- switch(input$var_region_sim,
+                         "Niigata"="新潟",
+                         "Tokyo"="東京")
+    cat(paste("地域:",region_name,sep=""),"\n")
     cat("\n")
     val <- val_df$estimate
     cat("メディア数のクリック数に対する効果:")
@@ -455,6 +480,10 @@ shinyServer(function(input, output) {
                              "robust_x_log" = "ロバストclick対数変換モデル")
     
     cat(paste("モデル種類:",model_type_str,sep=""),"\n")
+    region_name<- switch(input$var_region_sim,
+                         "Niigata"="新潟",
+                         "Tokyo"="東京")
+    cat(paste("地域:",region_name,sep=""),"\n")
     cat("\n")
     val <- val_df$estimate
     cat("クリック数のcv数に対する効果:")
@@ -565,13 +594,18 @@ shinyServer(function(input, output) {
   output$min_corrmatrix<- renderPlot({
     input_cate<- min_id_input()
     selected_df <-dfm %>% dplyr::filter(category_min_id == input_cate)
+    selected_df <- selected_df %>% dplyr::filter(region == input$var_region_cr_m)
     
+    if(nrow(selected_df) ==0){
+      break
+    }
+      
     if(input$checkbox_4 == TRUE){
       #week_num=12が異常値なのでこれを全て削除
       selected_df <- selected_df %>% dplyr::filter(week_num != 12)
     }
-    corr<-round(cor(selected_df[3:8]),3)
-    p.mat<- cor_pmat(selected_df[3:8])
+    corr<-round(cor(selected_df[4:9]),3)
+    p.mat<- cor_pmat(selected_df[4:9])
     p<-ggcorrplot(corr,lab=TRUE,lab_size=4,
                   type="lower",p.mat=p.mat,insig="pch",title="KPI間相関行列")
     plot(p) 
@@ -591,6 +625,8 @@ shinyServer(function(input, output) {
   output$min_scatterPlot<- renderPlot({
     input_cate <-min_id_input_s()
     selected_df <-dfm %>% dplyr::filter(category_min_id == input_cate)
+    
+    selected_df <- selected_df %>% dplyr::filter(region == input$var_region_m)
     
     if(input$checkbox_2 == TRUE){
     #week_num=12が異常値なのでこれを全て削除
@@ -637,18 +673,23 @@ shinyServer(function(input, output) {
     if(input$radio == 1){
       input_cate <- sm_id_input_ts()
       selected_df <-df %>% dplyr::filter(category_low_id ==input_cate)
+      selected_df <- selected_df %>% dplyr::filter(region == input$var_region_ts)
 
       
-      reshape_df <- melt(selected_df,id.vars=c("category_low_id","week_num"),
+      reshape_df <- melt(selected_df,id.vars=c("category_low_id","week_num","region"),
                          variable.name ="Varname",value.name="index")
      }
     else {#極小カテゴリのときの選択
       input_cate <- min_id_input_ts()
       selected_df <-dfm %>% dplyr::filter(category_min_id ==input_cate)
-      reshape_df <- melt(selected_df,id.vars=c("category_min_id","week_num"),
+      selected_df <- selected_df %>% dplyr::filter(region == input$var_region_ts)
+      reshape_df <- melt(selected_df,id.vars=c("category_min_id","week_num","region"),
                          variable.name ="Varname",value.name="index")
     }
     
+    if(nrow(selected_df) ==0){
+      stop
+    }
 
     #slidebarで指定した期間のプロットに限定する
     start_week <-input$slider_1[1]
@@ -676,9 +717,13 @@ shinyServer(function(input, output) {
     if(input$radio == 1){
       input_cate <- sm_id_input_ts()
       selected_df <-df %>% dplyr::filter(category_low_id ==input_cate)
+      selected_df <- selected_df %>% dplyr::filter(region == input$var_region_ts)
+      
+      
     }else{
       input_cate <- min_id_input_ts()
       selected_df <-dfm %>% dplyr::filter(category_min_id ==input_cate)
+      
     }
     
     #slidebarで指定した期間の表にする
@@ -733,6 +778,11 @@ shinyServer(function(input, output) {
       y_var <- "cv_cnt"
       x_var <- "cl_cnt"
     }
+    
+    #ここで、小カテであれ、極小カテであれ、地域ごとのフィルターをかける。
+    type_df <- type_df %>% dplyr::filter(region == input$var_region_comp)
+    
+    
 
     parm1<-lmrob.control()
    # parm1$seed=1546
@@ -748,6 +798,9 @@ shinyServer(function(input, output) {
     for (i in all_categories){
 
       selected_df<- type_df %>% dplyr::filter(get(field_type)==i)
+      
+      #この時点で、レコードが無ければ、ループを抜ける。
+      if(nrow(selected_df)==0){next}
       
       #--モデルを複数実行する
       res_rg<-lm(data=selected_df,get(y_var)~get(x_var))
