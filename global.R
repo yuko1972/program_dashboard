@@ -89,42 +89,15 @@ dfm <- dfm %>% dplyr::mutate(cvr=cv_cnt/cl_cnt)
 cateID_list<-cate_lab$category_low_id
 
 #--listup existing small categories in database
-#--crate Niigata list
+exist_scate_list<-unique(df$category_low_id)
+exist_scate_df<-as.data.frame(unique(df$category_low_id))
+colnames(exist_scate_df)<-c("ex_sc")
 
-region_df_niigata<- df %>% dplyr::filter(region =="Niigata") 
-exist_scate_df_niigata <- as.data.frame(unique(region_df_niigata$category_low_id))
-
-colnames(exist_scate_df_niigata)<-c("ex_sc")
-  
 #merge category label(small category name)
-scate_exist_niigata <- inner_join(x=cate_lab,y=exist_scate_df_niigata,by=c("category_low_id"="ex_sc"))
-  
-scate_exist_niigata <- scate_exist_niigata %>% dplyr::mutate(choise_label=paste(as.character(category_low_id)
+scate_exist <- inner_join(x=cate_lab,y=exist_scate_df,by=c("category_low_id"="ex_sc"))
+
+scate_exist <- scate_exist %>% dplyr::mutate(choise_label=paste(as.character(category_low_id)
                                                                 ,category_low_name,sep="_"))
-  
-#--crate Tokyo scate list
-
-region_df_tokyo<- df %>% dplyr::filter(region =="Tokyo") 
-exist_scate_df_tokyo <- as.data.frame(unique(region_df_tokyo$category_low_id))
-
-colnames(exist_scate_df_tokyo)<-c("ex_sc")
-
-#merge category label(small category name)
-scate_exist_tokyo <- inner_join(x=cate_lab,y=exist_scate_df_tokyo,by=c("category_low_id"="ex_sc"))
-
-scate_exist_tokyo <- scate_exist_niigata %>% dplyr::mutate(choise_label=paste(as.character(category_low_id)
-                                                                                ,category_low_name,sep="_"))
-
-
-#以下、server.Rに記載
-#region_scate<- reactive({
-#  #regionでフィルタしたdfを返す。
-#  region_df<-switch(input$var_region_s,
-#                    "Niigata"= scate_exist_niigata,
-#                    "Tokyo"=scate_exist_tokyo)
-#  return(region_df)
-#})
-
 
 
 #min category list(all)
@@ -254,16 +227,4 @@ anova_analysis<-function(reg){
     colnames(teststat)<-c("Chisq","model_pval")
   return(teststat)
 }
-
-#g<-function(x){
-#  e<-try(anova_analysis(x),silent=FALSE)
-#  if(class(e)=="try-error"){
-#    tmp<-matrix("NA",nrow=1,ncol=2)
-#    xx<-as.data.frame(tmp)
-#    colnames(xx)<-c("Chisq","model_pval")
-#  }else{
-#    xx<-anova_analysis(x)
-#  }
-#  return(xx)
-#}
 
