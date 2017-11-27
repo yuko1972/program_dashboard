@@ -17,13 +17,28 @@ shinyServer(function(input, output) {
   #--low category: scatterPlot display
   #return low_category_code from input variable
   sm_id_input <- reactive({
+    #UIでNiigataが選ばれたか、東京が選ばれたかによって、異なるdfを返す。
+    scate_exist <- region_scate()
     tmp_id <- subset(scate_exist,choise_label==input$var_sm)
     tmp_id$category_low_id
     #tmp_id : integer
   })
   
+  region_scate<- reactive({
+    #regionでフィルタしたdfを返す。
+    region_df<-switch(input$var_region_s,
+                      "Niigata"= scate_exist_niigata,
+                      "Tokyo"=scate_exist_tokyo)
+    return(region_df)
+  })
+  
+  
+  output$region_df<-renderTable(
+    region_scate()
+  )
 
   region_input <- reactive({
+    #単に選択した地域の文字列を返す(散布図のキャプションに使う)
     region <- switch(input$var_region_s,
                      "Niigata"="Niigata",
                      "Tokyo"="Tokyo")
@@ -35,11 +50,13 @@ shinyServer(function(input, output) {
     paste("地域",region_input(),sep=":")
   })
   
+  #input$var_region_sによってカテゴリ選択肢が異なるリスト
+  #scate_exist <- define_scate_list()
+  
   output$scatterPlot <- renderPlot({
+    
     input_cate <- sm_id_input()
     #東京か新潟かを選ぶ。
-
-
     selected_df <- df %>% dplyr::filter(category_low_id == input_cate )
     selected_df <- selected_df %>% dplyr::filter(region == input$var_region_s)
     
@@ -65,12 +82,33 @@ shinyServer(function(input, output) {
   
   #--low category: correlation matrix page
   sm_id_input_c <- reactive({
-    tmp_id <- subset(scate_exist,choise_label==input$var_sm_cr)
+    #UIでNiigataが選ばれたか、東京が選ばれたかによって、異なるscate_exist_regionを返す。
+    
+    
+    tmp_id <- subset(scate_exist_region_df,choise_label==input$var_sm_cr)
     tmp_id$category_low_id
     #tmp_id : integer
   })
 
 
+  
+
+   
+  #-- define category_list
+  def_region_category <- reactive({
+    
+    exist_scate_df<-as.data.frame(unique(df$category_low_id))
+    colnames(exist_scate_df)<-c("ex_sc")
+    scate_exist <- inner_join(x=cate_lab,y=exist_scate_df,by=c("category_low_id"="ex_sc"))
+    
+    scate_exist <- scate_exist %>% dplyr::mutate(choise_label=paste(as.character(category_low_id)
+                                                                    ,category_low_name,sep="_"))
+    return(scate_exist)    
+  })
+  
+  
+  
+  
   #show correlation matrix between kpis
   output$corrmatrix<- renderPlot({
     #reactive function sm_id_input
@@ -717,15 +755,13 @@ shinyServer(function(input, output) {
     if(input$radio == 1){
       input_cate <- sm_id_input_ts()
       selected_df <-df %>% dplyr::filter(category_low_id ==input_cate)
-      selected_df <- selected_df %>% dplyr::filter(region == input$var_region_ts)
-      
-      
+
     }else{
       input_cate <- min_id_input_ts()
       selected_df <-dfm %>% dplyr::filter(category_min_id ==input_cate)
       
     }
-    
+    selected_df <- selected_df %>% dplyr::filter(region == input$var_region_ts)
     #slidebarで指定した期間の表にする
      start_week <-input$slider_1[1]
      end_week <-input$slider_1[2]
