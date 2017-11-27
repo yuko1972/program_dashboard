@@ -17,31 +17,19 @@ shinyServer(function(input, output) {
   #--low category: scatterPlot display
   #return low_category_code from input variable
   sm_id_input <- reactive({
-    #UIでNiigataが選ばれたか、東京が選ばれたかによって、異なるdfを返す。
-    scate_exist <- region_scate()
     tmp_id <- subset(scate_exist,choise_label==input$var_sm)
     tmp_id$category_low_id
     #tmp_id : integer
   })
   
-  region_scate<- reactive({
-    #regionでフィルタしたdfを返す。
-    region_df<-switch(input$var_region_s,
-                      "Niigata"= scate_exist_niigata,
-                      "Tokyo"=scate_exist_tokyo)
-    return(region_df)
-  })
-  
-  
-  output$region_df<-renderTable(
-    region_scate()
-  )
 
   region_input <- reactive({
-    #単に選択した地域の文字列を返す(散布図のキャプションに使う)
     region <- switch(input$var_region_s,
                      "Niigata"="Niigata",
                      "Tokyo"="Tokyo")
+    #region <- switch(input$radio_rs,
+    #                 "1"="Niigata",
+    #                 "2"="Tokyo")
     return(region)
   })
   
@@ -50,15 +38,21 @@ shinyServer(function(input, output) {
     paste("地域",region_input(),sep=":")
   })
   
-  #input$var_region_sによってカテゴリ選択肢が異なるリスト
-  #scate_exist <- define_scate_list()
+
   
   output$scatterPlot <- renderPlot({
-    
     input_cate <- sm_id_input()
     #東京か新潟かを選ぶ。
+
+
     selected_df <- df %>% dplyr::filter(category_low_id == input_cate )
     selected_df <- selected_df %>% dplyr::filter(region == input$var_region_s)
+    
+    #selected_dfが0レコードだった場合、メッセージをoutput$Scatterplotに表示する。
+    validate(
+      need(nrow(selected_df) >0,"このカテゴリのデータ数が0レコードのため、散布図を表示できません。")
+    )
+    
     
     #checkbox_1の値を判断する
     
@@ -82,33 +76,12 @@ shinyServer(function(input, output) {
   
   #--low category: correlation matrix page
   sm_id_input_c <- reactive({
-    #UIでNiigataが選ばれたか、東京が選ばれたかによって、異なるscate_exist_regionを返す。
-    
-    
-    tmp_id <- subset(scate_exist_region_df,choise_label==input$var_sm_cr)
+    tmp_id <- subset(scate_exist,choise_label==input$var_sm_cr)
     tmp_id$category_low_id
     #tmp_id : integer
   })
 
 
-  
-
-   
-  #-- define category_list
-  def_region_category <- reactive({
-    
-    exist_scate_df<-as.data.frame(unique(df$category_low_id))
-    colnames(exist_scate_df)<-c("ex_sc")
-    scate_exist <- inner_join(x=cate_lab,y=exist_scate_df,by=c("category_low_id"="ex_sc"))
-    
-    scate_exist <- scate_exist %>% dplyr::mutate(choise_label=paste(as.character(category_low_id)
-                                                                    ,category_low_name,sep="_"))
-    return(scate_exist)    
-  })
-  
-  
-  
-  
   #show correlation matrix between kpis
   output$corrmatrix<- renderPlot({
     #reactive function sm_id_input
@@ -116,6 +89,11 @@ shinyServer(function(input, output) {
     selected_df <-df %>% dplyr::filter(category_low_id == input_cate)
     # 地域の選択変数：var_region_cr
     selected_df <- selected_df %>% dplyr::filter(region == input$var_region_cr)
+    
+    # errorトラップ
+    validate(
+      need(nrow(selected_df) >0,"対象カテゴリのレコード数が0のため計算できません。")
+    )
     
     if( input$checkbox_3 == TRUE){
     #week_num=12が異常値なのでこれを全て削除
@@ -132,7 +110,7 @@ shinyServer(function(input, output) {
   
   #return small category name that was selected in cormatrix tab
   output$selected_cate_name<-renderText({
-    paste("小カテゴリ名",input$var_sm_cr,sep=":")
+    paste("小カテゴリ名",input$var_sm_cr," 地域",input$var_region_cr,sep=":")
   })
 
 
@@ -174,6 +152,9 @@ shinyServer(function(input, output) {
     #小カテ、極小カテ共通
     selected_df <- selected_df %>% dplyr::filter(region == input$var_region_sim)
 
+    if(nrow(selected_df) ==0){
+      stop("データが0です。計算できません。")
+    }
     #obj_var ==1 説明変数がmedia_cnt,目的変数がcl_cntのモデル
     #obj_var ==1 説明変数がcl_cnt,目的変数がcv_cntのモデル
     if(obj_var == 1){
@@ -376,6 +357,8 @@ shinyServer(function(input, output) {
     
     #データを小カテ、極小カテのいずれかに決定し、回帰モデルを実行
     val_df <- calc_reg(1)
+    
+  
     #モデル種類
     model_type <- val_df$model
     
@@ -621,7 +604,7 @@ shinyServer(function(input, output) {
   })
   
   output$selected_min_cate_id<-renderText({
-     paste("極小カテゴリ",input$min_cate,sep=":")
+     paste("極小カテゴリ",input$min_cate," 地域",input$var_region_cr_m,sep=":")
   })
   
   
@@ -634,9 +617,14 @@ shinyServer(function(input, output) {
     selected_df <-dfm %>% dplyr::filter(category_min_id == input_cate)
     selected_df <- selected_df %>% dplyr::filter(region == input$var_region_cr_m)
     
-    if(nrow(selected_df) ==0){
-      break
-    }
+    # errorトラップ
+    validate(
+      need(nrow(selected_df) >0,"対象カテゴリのレコード数が0のため計算できません。")
+    )
+    
+    #if(nrow(selected_df) ==0){
+    #  break
+    #}
       
     if(input$checkbox_4 == TRUE){
       #week_num=12が異常値なのでこれを全て削除
@@ -649,6 +637,7 @@ shinyServer(function(input, output) {
     plot(p) 
   })
   
+
   #reactive code
   #task for min cate scatterplot
   min_id_input_s <- reactive({
@@ -666,6 +655,11 @@ shinyServer(function(input, output) {
     
     selected_df <- selected_df %>% dplyr::filter(region == input$var_region_m)
     
+    #レコード数が0だった場合のエラーメッセージ
+    validate(
+      need(nrow(selected_df) >0, "このカテゴリのデータ数が0レコードのため、散布図を表示できません。")
+    )
+    
     if(input$checkbox_2 == TRUE){
     #week_num=12が異常値なのでこれを全て削除
       selected_df <- selected_df %>% dplyr::filter(week_num != 12)
@@ -675,7 +669,7 @@ shinyServer(function(input, output) {
     
     p <- ggplot(selected_df,aes(y=get(input$var_min_y), x=get(input$var_min_x))
     )+geom_point()+ylab(input$var_min_y)+xlab(input$var_min_x)
-    p <- p+ggtitle(paste("散布図",input$var_min,sep=":"))
+    p <- p+ggtitle(paste("散布図",input$var_min,"地域",input$var_region_m,sep=":"))
     p <- p+theme_bw()
     plot(p)
   })
@@ -725,9 +719,10 @@ shinyServer(function(input, output) {
                          variable.name ="Varname",value.name="index")
     }
     
-    if(nrow(selected_df) ==0){
-      stop
-    }
+    validate(
+      need(nrow(selected_df) >0,"このカテゴリのデータ数は0です。")
+      )
+    
 
     #slidebarで指定した期間のプロットに限定する
     start_week <-input$slider_1[1]
@@ -755,13 +750,21 @@ shinyServer(function(input, output) {
     if(input$radio == 1){
       input_cate <- sm_id_input_ts()
       selected_df <-df %>% dplyr::filter(category_low_id ==input_cate)
-
+      
+      
     }else{
       input_cate <- min_id_input_ts()
       selected_df <-dfm %>% dplyr::filter(category_min_id ==input_cate)
       
     }
+    
+    #regionをフィルタする
     selected_df <- selected_df %>% dplyr::filter(region == input$var_region_ts)
+    
+    validate(
+      need(nrow(selected_df) >0,"このカテゴリのデータ数は0です。")
+    )
+    
     #slidebarで指定した期間の表にする
      start_week <-input$slider_1[1]
      end_week <-input$slider_1[2]
@@ -1043,7 +1046,10 @@ shinyServer(function(input, output) {
     )
   })
   
-
+#  output$cityControls <- renderUI({
+#    cities <- getNearestCities(input$lat, input$long)
+#    checkboxGroupInput("cities", "Choose Cities", cities)
+#  })
   
 })
 
