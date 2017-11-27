@@ -11,23 +11,10 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                                           label="東京、新潟を選択して下さい",
                                           choices = c("Niigata","Tokyo"),
                                         selected ="Niigata"),
-                              #var_region_sによって、scate_existの中身は変わる
                               selectInput("var_sm",
                                           label="小カテゴリを選んで下さい",
-                                          #choices = $choise_label,
                                           choices = scate_exist$choise_label,
                                           selected = "1000"),
-                              #conditionalPanel(condition = "input.var_region_s == Niigata",
-                              #                  selectInput("var_sm",
-                              #                 label="小カテゴリを選んで下さい",
-                              #                 choices=scate_exist_niigata$choise_label,
-                              #                 selected ="1000")),
-                              #conditionalPanel(condition = "input.var_region_s == Tokyo",
-                              #                 selectInput("var_sm",
-                              #                             label="小カテゴリを選んで下さい",
-                              #                             choices=scate_exist_tokyo$choise_label,
-                              #                             selected ="1000")),
-                              
                               #任意の変数を2つ選ぶ
                               selectInput("var_x",
                                           label="x軸の変数を選択して下さい",
@@ -46,14 +33,11 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                             
                             mainPanel(
                                # "distPlot"という名前でreactiveなPlotタイプの出力を宣言する
-                                plotOutput("scatterPlot")
-                              
-                            )
-                            
+                              plotOutput("scatterPlot")
+                            )  
                           ) #close sidebarLayout  
                  ), #close tabPanel,
                  
-
                  tabPanel("corrmatrix",
                           titlePanel("小カテゴリ毎週次データKPI間相関行列"),
                           sidebarLayout(
@@ -90,7 +74,7 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                               selectInput("var_min",
                                           label="極小カテゴリを選んで下さい",
                                           choices = mcate_exist$choise_label,
-                                          selected = "1"),
+                                          selected = "2_DMP用＞ファッション"),
                               #任意の変数を2つ選ぶ
                               selectInput("var_min_x",
                                           label="x軸の変数を選択して下さい",
@@ -109,9 +93,8 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                             ),
                             
                             mainPanel(
-                              # "distPlot"という名前でreactiveなPlotタイプの出力を宣言する
-                              plotOutput("min_scatterPlot")
-                              
+                                # "distPlot"という名前でreactiveなPlotタイプの出力を宣言する
+                                plotOutput("min_scatterPlot")
                             )
                             
                           ) #sidebarLayout  
@@ -119,7 +102,7 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                  
                  
                  tabPanel("min_corrmatrix",
-                          titlePanel("極小カテゴリ毎週次デーKPI間相関行列"),
+                          titlePanel("極小カテゴリ毎週次データKPI間相関行列"),
                           sidebarLayout(
                             sidebarPanel(
                               selectInput("var_region_cr_m",
@@ -131,7 +114,7 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                                           label="極小カテゴリを選んで下さい",
                                           # 実際にデータに存在する極小カテしか選べない
                                           choices = mcate_exist$choise_label,
-                                          selected = "1"),
+                                          selected = "2_DMP用＞ファッション"),
                               # 12週目(異常値)を除くかどうか選択
                               checkboxInput("checkbox_4", label = "週番号12を除く", value = TRUE)
                             ), 
@@ -261,6 +244,16 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                             )
                           )
                           ),
+                 #tabPanel("test",
+                #          sidebarLayout(
+                #          sidebarPanel(),
+                #          mainPanel(
+                #            numericInput("lat", "Latitude"),
+                #            numericInput("long", "Longitude"),
+                #            uiOutput("cityControls")
+                #          )
+                #            )
+                #          ),
                  tabPanel("about",
                           titlePanel("データ情報"),
                           sidebarLayout(
@@ -275,13 +268,16 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                             ),
                             mainPanel(
                               helpText("更新履歴"),
+                              p("更新履歴(2017/11/27)"),
+                              div("地域とカテゴリの組み合わせによってデータが0となる場合のエラートラップとメッセージを全ページに追加した。",style="color:teal"),
+                              
+                              br(),
                               p("更新履歴(2017/11/24)"),
-                              div("全てのページで、地域(新潟か東京）別の分析を可能にした。",style="color:darkgreen"),
+                              div("全てのページで、地域(新潟か東京）別の分析を可能にした。",style="color:navy"),
                               div("データの更新:2017/11/19までデータ取り込み",style="color:darkgreen"),
                               div("compare_simで、データのレコード数が0になる場合スキップ処理を追加",style="color:darkgreen"),
                               div("小カテのデータにregion変数(Niigata/Tokyo)を追加して再集計した。",style="color:darkgreen"),
                               div("極小カテのデータにregion変数を追加して再集計した。",style="color:darkgreen"),
-                              div("東京か、新潟を選択したときにレコード数が0になるカテゴリについては選択できないようにすべき",style="color:red"),
                               br(),
                               p("更新履歴(2017/11/21)"),
                               div("compare_simページで、ワーニングの例外処理を追加。",style="color:cyan"),
