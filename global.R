@@ -9,6 +9,7 @@ library(reshape2)
 library(broom)
 library(robustbase)
 library(car)
+library(scales)
 
 #loadfonts(quiet = TRUE)
 
