@@ -156,9 +156,15 @@ shinyServer(function(input, output) {
     #小カテ、極小カテ共通
     selected_df <- selected_df %>% dplyr::filter(region == input$var_region_sim)
 
+    #shiny用、データ数が0だった時のエラーメッセージ
+    validate(need( nrow(selected_df)>0,"データが0行です。計算できません。" )
+             )
+    
     if(nrow(selected_df) ==0){
-      stop("データが0です。計算できません。")
+      stop()
     }
+    
+    
     #obj_var ==1 説明変数がmedia_cnt,目的変数がcl_cntのモデル
     #obj_var ==1 説明変数がcl_cnt,目的変数がcv_cntのモデル
     if(obj_var == 1){
@@ -362,7 +368,7 @@ shinyServer(function(input, output) {
     #データを小カテ、極小カテのいずれかに決定し、回帰モデルを実行
     val_df <- calc_reg(1)
     
-  
+    
     #モデル種類
     model_type <- val_df$model
     
@@ -748,6 +754,7 @@ shinyServer(function(input, output) {
     p <- p + theme(strip.text = element_text(size=15))
     p <- p + guides(fill=FALSE)
     p <- p +xlab("週番号")+ ylab("")
+    p <- p + scale_y_continuous(labels = comma)
     plot(p)
     
   })
