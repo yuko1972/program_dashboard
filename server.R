@@ -68,7 +68,11 @@ shinyServer(function(input, output) {
     p<-p+ggtitle(paste("散布図",catename,"地域",input$var_region_s,sep=":"))
     #p<-p+theme(text = element_text(family = font_A))
     #p <-p + theme_bw(base_family="HiraMaruProN-W3")
-    p <-p + theme_bw(base_family="IPAPMincho")
+    p <- p + theme_bw(base_family="IPAPMincho")
+    p <- p + theme(axis.text.x = element_text(size=12),
+                   axis.text.y = element_text(size=12))
+    p <- p + scale_y_continuous(labels = comma)
+    p <- p + scale_x_continuous(labels = comma)
     #p<-p + theme_bw(base_family="IPAexMincho")
     plot(p)
     
@@ -671,6 +675,10 @@ shinyServer(function(input, output) {
     )+geom_point()+ylab(input$var_min_y)+xlab(input$var_min_x)
     p <- p+ggtitle(paste("散布図",input$var_min,"地域",input$var_region_m,sep=":"))
     p <- p+theme_bw()
+    p <- p + theme(axis.text.x = element_text(size=12),
+                   axis.text.y = element_text(size=12))
+    p <- p + scale_y_continuous(labels = comma)
+    p <- p + scale_x_continuous(labels = comma)
     plot(p)
   })
   
