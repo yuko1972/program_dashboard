@@ -223,7 +223,10 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                               conditionalPanel(
                                 condition = "input.radio_model_sim == 2",
                                 verbatimTextOutput("model_cv")
-                              )
+                              ),
+                              numericInput('input_x',"メディア数を入力してください",100),
+                              textOutput("result_simulation")
+                              
                             )
                             
                           )
