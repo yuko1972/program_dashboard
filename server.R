@@ -130,13 +130,9 @@ shinyServer(function(input, output) {
     tmp_id$category_min_id
   })
   
-  #return Simulation Page output-- 
-  # regression model:1)media effect to click
-  # 2) click effect to media
-  # reactive({})にしなくても、中身のsm_id_input_sim()などがreactiveだから、書き換わっている？
- # 引数がある関数は、reactive({})とは書けないか？
-    #calc_reg <-reactive({
-  calc_reg <- function(obj_var){
+  
+  # SimulationページのUI入力データをみて、データを絞り込む関数。
+  define_data <- reactive({
     #小カテゴリか極小カテゴリかによるデータフレーム選択
     if(input$radio_s == 1){
       input_cate <- sm_id_input_sim()
@@ -146,7 +142,7 @@ shinyServer(function(input, output) {
       input_cate <- min_id_input_sim()
       selected_df <-dfm %>% dplyr::filter(category_min_id ==input_cate)
     }
-
+    
     #チェックボックスで「週番号12を除く」にチェックがあれば、レコードを除く
     if(input$checkbox_5 == TRUE){    
       #week_num=12が異常値なのでこれを全て削除
@@ -155,7 +151,22 @@ shinyServer(function(input, output) {
     #UIのregion変数を読んで、地域を新潟、東京のいずれかに絞る。
     #小カテ、極小カテ共通
     selected_df <- selected_df %>% dplyr::filter(region == input$var_region_sim)
-
+    return(selected_df)
+    
+  })
+  
+  
+  #return Simulation Page output-- 
+  # regression model:1)media effect to click
+  # 2) click effect to media
+  # reactive({})にしなくても、中身のsm_id_input_sim()などがreactiveだから、書き換わっている？
+ # 引数がある関数は、reactive({})とは書けないか？
+    #calc_reg <-reactive({
+  calc_reg <- function(obj_var){
+    
+    #Simulationページのinput情報からデータをフィルタして定義する。
+    selected_df <- define_data()
+    
     #shiny用、データ数が0だった時のエラーメッセージ
     validate(need( nrow(selected_df)>0,"データが0行です。計算できません。" )
              )
@@ -166,7 +177,7 @@ shinyServer(function(input, output) {
     
     
     #obj_var ==1 説明変数がmedia_cnt,目的変数がcl_cntのモデル
-    #obj_var ==1 説明変数がcl_cnt,目的変数がcv_cntのモデル
+    #obj_var ==2 説明変数がcl_cnt,目的変数がcv_cntのモデル
     if(obj_var == 1){
       y_var <- "cl_cnt"
       x_var <- "media_cnt"
@@ -261,9 +272,11 @@ shinyServer(function(input, output) {
     #-----------------------------------------
     #lmrob.controlオブジェクトを先に設定しておく。
     parm1<-lmrob.control()
-    parm1$seed=1.
-    parm1$maxit.scale=300
-    parm1$max.it=300
+    #parm1$seed=1.
+    parm1$maxit.scale=500
+    parm1$max.it=500
+    parm1$k.max=500
+    parm1$setting="KS2011"
     
     res5 <- lmrob(data=selected_df,get(y_var)~ get(x_var),control=parm1)
     #ロバスト回帰分析の結果パラメータを取得
@@ -354,7 +367,7 @@ shinyServer(function(input, output) {
     #parm_good_model$last_obs.y<- selected_df$cl_cnt[nrow(selected_df)]
     good_model$last_obs.y<-selected_df[nrow(selected_df),c(y_var)]
     
-    
+     
     return(good_model)
 
   }
@@ -495,6 +508,35 @@ shinyServer(function(input, output) {
     return(hantei_str)
   }
   
+  
+  #click_infoの結果モデルを使い、予測値を返す
+  output$result_simulation <- renderText({
+    
+    #知りたいxの値をinputから受けとる。
+    x_val <- input$input_x
+    
+    #ベストなモデルのパラメータを受けとる。
+    parm_output <-switch( input$radio_model_sim,
+                          "1" = calc_reg(1),
+                          "2" = calc_reg(2)
+    )
+    
+    #dataを確定する。
+    df_sim <- define_data()
+    
+    #モデルを選ぶ。
+    #obj_var ==1 説明変数がmedia_cnt,目的変数がcl_cntのモデル
+    #obj_var ==2 説明変数がcl_cnt,目的変数がcv_cntのモデル
+    if( input$radion_model_sim == 1){
+      y_var <- "cl_cnt"
+      x_var <- "media_cnt"
+    }else if (input$radion_model_sim ==2){
+      y_var <- "cv_cnt"
+      x_var <- "cl_cnt"
+    }
+    
+      
+  })
     
   
   #return Simulation Page output--click effect to cv
@@ -1069,10 +1111,6 @@ shinyServer(function(input, output) {
     paste("モデル：",model_name,sep="")
   })
   
-#  output$cityControls <- renderUI({
-#    cities <- getNearestCities(input$lat, input$long)
-#    checkboxGroupInput("cities", "Choose Cities", cities)
-#  })
-  
+
 })
 
