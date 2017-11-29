@@ -224,8 +224,9 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                                 condition = "input.radio_model_sim == 2",
                                 verbatimTextOutput("model_cv")
                               ),
-                              numericInput('input_x',"メディア数を入力してください",100),
-                              textOutput("result_simulation")
+                              
+                              numericInput('input_x',"output.input_expr",100),
+                              verbatimTextOutput("result_simulation")
                               
                             )
                             
@@ -283,6 +284,10 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                             ),
                             mainPanel(
                               helpText("更新履歴"),
+                              p("更新履歴(2017/11/29)"),
+                              div("simulationページで、xを入力させるinputboxを追加。シミュレーションの結果の推測値と95%信頼区間を表示。
+                                  robustモデル以外は予測値をUIに表示させることに成功。",style="color:darkred"),
+                              br(),
                               p("更新履歴(2017/11/28)"),
                               div("scatterplotページでx軸、y軸の数値表示形式を指数表示でなくする。",style="color:blue"),
                               div("simulationページで、選択したモデルの結果のみ出力させるようにした。",style="color:blue"),
