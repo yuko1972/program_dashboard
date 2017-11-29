@@ -361,6 +361,13 @@ shinyServer(function(input, output) {
  # })
 
 
+  output$model_type_info<-renderText({
+    m_name <- switch(input$radio_model_sim,
+                         "1" = "media数でclick数を説明するモデル",
+                         "2" = "click数でcv数を説明するモデル"
+    )
+    paste("モデル：",m_name,sep="")
+  })
   
   #effect of media to click
   output$click_info <- renderPrint({
@@ -1055,10 +1062,11 @@ shinyServer(function(input, output) {
   #Page::compare_sim
   #return current model name
   output$current_model_name<-renderText({
-    model_name<-switch(input$radio_model,
-           "1"="media数でclick数を説明するモデル",
-           "2" ="click数でcv数を説明するモデル"
+    model_name <- switch(input$radio_model,
+           "1" = "media数でclick数を説明するモデル",
+           "2" = "click数でcv数を説明するモデル"
     )
+    paste("モデル：",model_name,sep="")
   })
   
 #  output$cityControls <- renderUI({
