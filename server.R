@@ -382,6 +382,13 @@ shinyServer(function(input, output) {
     paste("モデル：",m_name,sep="")
   })
   
+  output$input_expr<- renderText({
+    switch(input$radio_model_sim,
+           "1"="mdcia数を入力してください",
+           "2"="click数を入力してください。")
+    })
+  
+  
   #effect of media to click
   output$click_info <- renderPrint({
     
@@ -510,7 +517,7 @@ shinyServer(function(input, output) {
   
   
   #click_infoの結果モデルを使い、予測値を返す
-  output$result_simulation <- renderText({
+  output$result_simulation <- renderPrint({
     
     #知りたいxの値をinputから受けとる。
     x_val <- input$input_x
@@ -527,17 +534,74 @@ shinyServer(function(input, output) {
     #モデルを選ぶ。
     #obj_var ==1 説明変数がmedia_cnt,目的変数がcl_cntのモデル
     #obj_var ==2 説明変数がcl_cnt,目的変数がcv_cntのモデル
-    if( input$radion_model_sim == 1){
+    if( input$radio_model_sim == "1"){
       y_var <- "cl_cnt"
       x_var <- "media_cnt"
-    }else if (input$radion_model_sim ==2){
+    }else if (input$radio_model_sim == "2"){
       y_var <- "cv_cnt"
       x_var <- "cl_cnt"
     }
     
-      
+    #最良なモデル名を表示する。
+    model_name<-parm_output$model
+    
+    if(model_name=="normal"){
+      estimate_value_set <- calc_normal(x_val,df_sim,y_var,x_var)
+    } else if(model_name =="double_log"){
+      estimate_value_set <- calc_double_log(x_val,df_sim,y_var,x_var)
+    } else if(model_name =="y_log"){
+      estimate_value_set <- calc_y_log(x_val,df_sim,y_var,x_var)
+    } else if(model_name =="x_log"){
+      estimate_value_set <- calc_x_log(x_val,df_sim,y_var,x_var)
+    }
+
+    
+    cat(paste("xが",x_val,"の時のモデルによる推測値\n",sep=""))
+    cat(sprintf("%7.3f",estimate_value_set[1]))
+    cat("\n")
+    cat("95%信頼区間：  \n")
+    cat(paste(sprintf("%7.3f",estimate_value_set[2])))
+    cat("\n")
+    cat(paste(sprintf("%7.3f",estimate_value_set[3])))
+    
+#    paste(cat(sprintf("%7.3f",estimate_value_set[3]),"\n"))
+    
   })
     
+  calc_normal<-function(x_val,df,y_var,x_var){
+    res1 <- lm(data=df,get(y_var)~ get(x_var))
+    new_value <- data.frame(x_val)
+    colnames(new_value) <- x_var
+    outres<-predict(res1,new_value,interval="confidence",level = 0.95)
+    return(outres)
+  }
+  
+  calc_double_log<-function(x_val,df,y_var,x_var){
+    res2 <- lm(data=df,I(log(get(y_var)+0.01))~ I(log(get(x_var)+0.01)))
+    new_value <- data.frame(x_val)
+    colnames(new_value) <- x_var
+    outres <-predict(res2,new_value,interval="confidence",level = 0.95)
+    outvalue <-exp(outres)
+    return(outvalue)
+  }
+  
+  calc_y_log <- function(x_val,df,y_var,x_var){
+    res3 <- lm(data=df,I(log(get(y_var)+0.01))~ get(x_var))
+    new_value <- data.frame(x_val)
+    colnames(new_value) <- x_var
+    outres <-predict(res3,new_value,interval="confidence",level = 0.95)
+    outvalue <-exp(outres)
+    return(outvalue)
+  }
+  
+  calc_x_log <- function(x_val,df,y_var,x_var){
+    res4 <- lm(data=df,get(y_var)~ I(log(get(x_var)+0.01)))
+    new_value <- data.frame(x_val)
+    colnames(new_value) <- x_var
+    outres <-predict(res4,new_value,interval="confidence",level = 0.95)
+    return(outres)
+  
+  }
   
   #return Simulation Page output--click effect to cv
   #effect of click to cv
