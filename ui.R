@@ -205,13 +205,25 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                                                            selected ="1")
                               ),
                               # 12週目(異常値)を除くかどうか選択
-                              checkboxInput("checkbox_5", label = "週番号12を除く", value = TRUE)
+                              checkboxInput("checkbox_5", label = "週番号12を除く", value = TRUE),
+                              radioButtons("radio_model_sim",
+                                           label = "モデルを選んで下さい",
+                                           choices = c("click数予測モデル"= "1","cv数予測モデル"="2"),
+                                           selected = "1")
                             ),
                             mainPanel(
-                              div("media数でclick数を説明するモデル",style="color:blue"),
-                              verbatimTextOutput("click_info"),
-                              div("click数でcv数を説明するモデル",style="color:blue"),
-                              verbatimTextOutput("model_cv")
+                              #verbatimTextOutput("model_type_info"),
+                              textOutput("model_type_info"),
+                              #div("click数でcv数を説明するモデル",style="color:blue"),
+                              conditionalPanel(  
+                                condition = "input.radio_model_sim == 1",
+                                verbatimTextOutput("click_info")
+                              ),
+                              #div("click数でcv数を説明するモデル",style="color:blue"),
+                              conditionalPanel(
+                                condition = "input.radio_model_sim == 2",
+                                verbatimTextOutput("model_cv")
+                              )
                             )
                             
                           )
@@ -270,6 +282,7 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                               helpText("更新履歴"),
                               p("更新履歴(2017/11/28)"),
                               div("scatterplotページでx軸、y軸の数値表示形式を指数表示でなくする。",style="color:blue"),
+                              div("simulationページで、選択したモデルの結果のみ出力させるようにした。",style="color:blue"),
                               br(),
                               p("更新履歴(2017/11/27)"),
                               div("地域とカテゴリの組み合わせによってデータが0となる場合のエラートラップとメッセージを全ページに追加した。",style="color:teal"),
