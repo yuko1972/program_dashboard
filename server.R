@@ -63,9 +63,16 @@ shinyServer(function(input, output) {
     font_A <- "IPAMincho"
     
     catename <- input$var_sm
-    p<-ggplot(selected_df,aes(y=get(input$var_y), x=get(input$var_x))
-    )+geom_point()+ylab(input$var_y)+xlab(input$var_x)
-    p<-p+ggtitle(paste("散布図",catename,"地域",input$var_region_s,sep=":"))
+    
+    #最直近の週は赤でプロットする。
+    latest_week <- max(selected_df$week_num)
+    selected_df <- selected_df %>% dplyr::mutate(latest="FALSE")
+    selected_df[selected_df$week_num==latest_week,"latest"]<- "TRUE"
+    
+    
+    p <-ggplot(selected_df,aes(y=get(input$var_y), x=get(input$var_x),colour=latest))+geom_point()+ylab(input$var_y)+xlab(input$var_x)
+    p <- p+ggtitle(paste("散布図",catename,"地域",input$var_region_s,sep=":"))
+    p <- p + scale_color_manual(values= c("TRUE"="red","FALSE"="blue"))
     #p<-p+theme(text = element_text(family = font_A))
     #p <-p + theme_bw(base_family="HiraMaruProN-W3")
     p <- p + theme_bw(base_family="IPAPMincho")
@@ -865,11 +872,19 @@ shinyServer(function(input, output) {
     #week_num=12が異常値なのでこれを全て削除
       selected_df <- selected_df %>% dplyr::filter(week_num != 12)
     }
+    
+    #最直近の週を区別するlatestカラムを追加
+    selected_df <- selected_df %>% dplyr::mutate(latest="FALSE")
+    latest_week <- max(selected_df$week_num)
+    selected_df[selected_df$week_num == latest_week,"latest"]<- "TRUE"
+    
+    
     var_x <- input$var_min_x
     var_y <- input$var_min_y
     
-    p <- ggplot(selected_df,aes(y=get(input$var_min_y), x=get(input$var_min_x))
-    )+geom_point()+ylab(input$var_min_y)+xlab(input$var_min_x)
+    p <- ggplot(selected_df,aes(y=get(input$var_min_y), x=get(input$var_min_x),colour=latest))
+    p <- p+geom_point()+ylab(input$var_min_y)+xlab(input$var_min_x)
+    p <- p + scale_color_manual(values= c("TRUE"="red","FALSE"="blue"))
     p <- p+ggtitle(paste("散布図",input$var_min,"地域",input$var_region_m,sep=":"))
     p <- p+theme_bw()
     p <- p + theme(axis.text.x = element_text(size=12),

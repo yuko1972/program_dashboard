@@ -286,6 +286,7 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                               helpText("更新履歴"),
                               p("更新履歴(2017/11/30)"),
                               div("simulationページで、robustモデルのシミュレーションにも対応",style="color:green"),
+                              div("Scatterplot/min_Scatterplotページで、最直近の週のポイントの色を赤で表示させるようにした",style="color:red"),
                               br(),
                               p("更新履歴(2017/11/29)"),
                               div("simulationページで、xを入力させるinputboxを追加。シミュレーションの結果の推測値と95%信頼区間を表示。
