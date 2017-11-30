@@ -522,7 +522,7 @@ shinyServer(function(input, output) {
     #知りたいxの値をinputから受けとる。
     x_val <- input$input_x
     
-    #ベストなモデルのパラメータを受けとる。
+    #click数予測か、cv数予測かをradio_model_simから判定し、ベストなモデルのパラメータをdfで受けとる。
     parm_output <-switch( input$radio_model_sim,
                           "1" = calc_reg(1),
                           "2" = calc_reg(2)
@@ -553,26 +553,33 @@ shinyServer(function(input, output) {
       estimate_value_set <- calc_y_log(x_val,df_sim,y_var,x_var)
     } else if(model_name =="x_log"){
       estimate_value_set <- calc_x_log(x_val,df_sim,y_var,x_var)
+    } else if(model_name =="robust_normal"){
+      estimate_value_set <- calc_rob_normal(x_val,df_sim,y_var,x_var)
+    } else if(model_name == "robust_double_log"){
+      estimate_value_set <- calc_rob_double(x_val,df_sim,y_var,x_var)
+    } else if (model_name =="robust_y_log"){
+      estimate_value_set <- calc_rob_y(x_val,df_sim,y_var,x_var)
+    } else if (model_name =="robust_x_log"){
+      estimate_value_set <- calc_rob_x(x_val,df_sim,y_var,x_var)
     }
+    
 
-    
-    cat(paste("xが",x_val,"の時のモデルによる推測値\n",sep=""))
-    cat(sprintf("%7.3f",estimate_value_set[1]))
+
+    msgstr <- paste("xが",x_val,"の時のモデルによる推測値",sep="")
+    cat(paste(msgstr,sprintf("%7.3f",estimate_value_set[1]),sep=":"))
     cat("\n")
-    cat("95%信頼区間：  \n")
-    cat(paste(sprintf("%7.3f",estimate_value_set[2])))
+    cat(paste("推測値の95%予測区間(下限)",sprintf("%7.3f",estimate_value_set[2]),sep=":"))
     cat("\n")
-    cat(paste(sprintf("%7.3f",estimate_value_set[3])))
+    cat(paste("推測値の95%予測区間(上限)",sprintf("%7.3f",estimate_value_set[3]),sep=":"))
     
-#    paste(cat(sprintf("%7.3f",estimate_value_set[3]),"\n"))
-    
+
   })
     
   calc_normal<-function(x_val,df,y_var,x_var){
     res1 <- lm(data=df,get(y_var)~ get(x_var))
     new_value <- data.frame(x_val)
     colnames(new_value) <- x_var
-    outres<-predict(res1,new_value,interval="confidence",level = 0.95)
+    outres<-predict(res1,new_value,interval="prediction",level = 0.95)
     return(outres)
   }
   
@@ -580,7 +587,7 @@ shinyServer(function(input, output) {
     res2 <- lm(data=df,I(log(get(y_var)+0.01))~ I(log(get(x_var)+0.01)))
     new_value <- data.frame(x_val)
     colnames(new_value) <- x_var
-    outres <-predict(res2,new_value,interval="confidence",level = 0.95)
+    outres <-predict(res2,new_value,interval="prediction",level = 0.95)
     outvalue <-exp(outres)
     return(outvalue)
   }
@@ -589,7 +596,7 @@ shinyServer(function(input, output) {
     res3 <- lm(data=df,I(log(get(y_var)+0.01))~ get(x_var))
     new_value <- data.frame(x_val)
     colnames(new_value) <- x_var
-    outres <-predict(res3,new_value,interval="confidence",level = 0.95)
+    outres <-predict(res3,new_value,interval="prediction",level = 0.95)
     outvalue <-exp(outres)
     return(outvalue)
   }
@@ -598,9 +605,80 @@ shinyServer(function(input, output) {
     res4 <- lm(data=df,get(y_var)~ I(log(get(x_var)+0.01)))
     new_value <- data.frame(x_val)
     colnames(new_value) <- x_var
-    outres <-predict(res4,new_value,interval="confidence",level = 0.95)
+    outres <-predict(res4,new_value,interval="prediction",level = 0.95)
     return(outres)
   
+  }
+  
+  calc_rob_normal <- function(x_val,df,y_var,x_var){
+    parm1<-lmrob.control()
+    #parm1$seed=1.
+    parm1$maxit.scale=500
+    parm1$max.it=500
+    parm1$k.max=500
+    parm1$setting="KS2011"
+    
+    res5 <- lmrob(data=df,get(y_var)~ get(x_var),control=parm1)
+
+    new_value <- data.frame(x_val)
+    colnames(new_value) <- x_var
+    outres <-predict(res5,new_value,interval="prediction",level = 0.95)
+    return(outres)
+  }
+  
+  calc_rob_double <- function(x_val,df,y_var,x_var){
+    parm1<-lmrob.control()
+    #parm1$seed=1.
+    parm1$maxit.scale=500
+    parm1$max.it=500
+    parm1$k.max=500
+    parm1$setting="KS2011"
+    
+    res6 <- lmrob(data=df,I(log(get(y_var)+0.01))~ I(log(get(x_var)+0.01)),control=parm1)
+    new_value <- data.frame(x_val)
+    colnames(new_value) <- x_var
+    outres <-predict(res6,new_value,interval="prediction",level = 0.95)
+    
+    #推測値を対数から元の値に戻す
+    outvalue <-exp(outres)
+    return(outvalue)
+
+  }
+  
+  calc_rob_y <- function(x_val,df,y_var,x_var){
+    parm1<-lmrob.control()
+    #parm1$seed=1.
+    parm1$maxit.scale=500
+    parm1$max.it=500
+    parm1$k.max=500
+    parm1$setting="KS2011"
+    
+    res7 <- lmrob(data=df,I(log(get(y_var)+0.01))~ get(x_var),control=parm1)
+    new_value <- data.frame(x_val)
+    colnames(new_value) <- x_var
+    outres <-predict(res7,new_value,interval="prediction",level = 0.95)
+    
+    #推測値を対数から元の値に戻す
+    outvalue <-exp(outres)
+    return(outvalue)
+    
+  }
+  
+  calc_rob_x <-function(x_val,df,y_var,x_var){
+    parm1<-lmrob.control()
+    #parm1$seed=1.
+    parm1$maxit.scale=500
+    parm1$max.it=500
+    parm1$k.max=500
+    parm1$setting="KS2011"
+    
+    res8 <- lmrob(data=df,get(y_var)~ I(log(get(x_var)+0.01)),control=parm1)
+    new_value <- data.frame(x_val)
+    colnames(new_value) <- x_var
+    outres <-predict(res8,new_value,interval="prediction",level = 0.95)
+   
+    return(outres)
+    
   }
   
   #return Simulation Page output--click effect to cv
