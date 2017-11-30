@@ -284,6 +284,9 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                             ),
                             mainPanel(
                               helpText("更新履歴"),
+                              p("更新履歴(2017/11/30)"),
+                              div("simulationページで、robustモデルのシミュレーションにも対応",style="color:green"),
+                              br(),
                               p("更新履歴(2017/11/29)"),
                               div("simulationページで、xを入力させるinputboxを追加。シミュレーションの結果の推測値と95%信頼区間を表示。
                                   robustモデル以外は予測値をUIに表示させることに成功。",style="color:darkred"),
