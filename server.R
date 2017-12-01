@@ -389,12 +389,10 @@ shinyServer(function(input, output) {
     paste("モデル：",m_name,sep="")
   })
   
-  output$input_expr<- renderText({
-    switch(input$radio_model_sim,
-           "1"="mdcia数を入力してください",
-           "2"="click数を入力してください。")
-    })
-  
+
+  output$check_value<- renderText({
+    class(input$radio_model_sim)
+  })
   
   #effect of media to click
   output$click_info <- renderPrint({
@@ -522,13 +520,14 @@ shinyServer(function(input, output) {
     return(hantei_str)
   }
   
-  
+
   #click_infoの結果モデルを使い、予測値を返す
-  output$result_simulation <- renderPrint({
+  output$result_simulation<- renderPrint({
     
     #知りたいxの値をinputから受けとる。
-    x_val <- input$input_x
-    
+    x_val <- input$num
+    #x_val <- 100
+
     #click数予測か、cv数予測かをradio_model_simから判定し、ベストなモデルのパラメータをdfで受けとる。
     parm_output <-switch( input$radio_model_sim,
                           "1" = calc_reg(1),
@@ -550,6 +549,7 @@ shinyServer(function(input, output) {
     }
     
     #最良なモデル名を表示する。
+#    cat(paste(y_var,x_var,"\n",sep=":"))
     model_name<-parm_output$model
     
     if(model_name=="normal"){
@@ -570,15 +570,15 @@ shinyServer(function(input, output) {
       estimate_value_set <- calc_rob_x(x_val,df_sim,y_var,x_var)
     }
     
-
-
     msgstr <- paste("xが",x_val,"の時のモデルによる推測値",sep="")
     cat(paste(msgstr,sprintf("%7.3f",estimate_value_set[1]),sep=":"))
     cat("\n")
-    cat(paste("推測値の95%予測区間(下限)",sprintf("%7.3f",estimate_value_set[2]),sep=":"))
+    cat("推測値の95%区間","\n")
+    #cat( paste(sprintf("%s","推測値の95予測区間")))
+    cat(paste(sprintf("%10s","下限"),sprintf("%7.3f",estimate_value_set[2]),sep=":"))
+    #cat(paste("推測値の95%予測区間","(下限):",sep=""))
     cat("\n")
-    cat(paste("推測値の95%予測区間(上限)",sprintf("%7.3f",estimate_value_set[3]),sep=":"))
-    
+    cat(paste(sprintf("%10s","上限"),sprintf("%7.3f",estimate_value_set[3]),"",sep=":"))
 
   })
     
@@ -614,7 +614,6 @@ shinyServer(function(input, output) {
     colnames(new_value) <- x_var
     outres <-predict(res4,new_value,interval="prediction",level = 0.95)
     return(outres)
-  
   }
   
   calc_rob_normal <- function(x_val,df,y_var,x_var){
@@ -645,11 +644,9 @@ shinyServer(function(input, output) {
     new_value <- data.frame(x_val)
     colnames(new_value) <- x_var
     outres <-predict(res6,new_value,interval="prediction",level = 0.95)
-    
     #推測値を対数から元の値に戻す
     outvalue <-exp(outres)
     return(outvalue)
-
   }
   
   calc_rob_y <- function(x_val,df,y_var,x_var){
@@ -668,7 +665,6 @@ shinyServer(function(input, output) {
     #推測値を対数から元の値に戻す
     outvalue <-exp(outres)
     return(outvalue)
-    
   }
   
   calc_rob_x <-function(x_val,df,y_var,x_var){
@@ -683,9 +679,7 @@ shinyServer(function(input, output) {
     new_value <- data.frame(x_val)
     colnames(new_value) <- x_var
     outres <-predict(res8,new_value,interval="prediction",level = 0.95)
-   
     return(outres)
-    
   }
   
   #return Simulation Page output--click effect to cv
