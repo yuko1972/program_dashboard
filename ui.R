@@ -212,24 +212,19 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                                            selected = "1")
                             ),
                             mainPanel(
-                              #verbatimTextOutput("model_type_info"),
-                              textOutput("model_type_info"),
-                              #div("click数でcv数を説明するモデル",style="color:blue"),
-                              conditionalPanel(  
-                                condition = "input.radio_model_sim == 1",
+                              verbatimTextOutput("model_type_info"),
+                              conditionalPanel(
+                                condition = "input.radio_model_sim == '1'",
                                 verbatimTextOutput("click_info")
                               ),
-                              #div("click数でcv数を説明するモデル",style="color:blue"),
                               conditionalPanel(
-                                condition = "input.radio_model_sim == 2",
+                                condition = "input.radio_model_sim == '2'",
                                 verbatimTextOutput("model_cv")
                               ),
-                              
-                              numericInput('input_x',"output.input_expr",100),
+                              numericInput("num", label = h3("入力してください。"), value = 100),
+                              #hr(),
                               verbatimTextOutput("result_simulation")
-                              
                             )
-                            
                           )
                           ),
                  tabPanel("Compare_sim",
