@@ -12,8 +12,8 @@ source('global.R')
 
 
 # Define server logic required to draw a histogram
-shinyServer(function(input, output) {
-
+shinyServer(function(input, output,session) {
+  
   #--low category: scatterPlot display
   #return low_category_code from input variable
   sm_id_input <- reactive({
@@ -38,44 +38,128 @@ shinyServer(function(input, output) {
     paste("地域",region_input(),sep=":")
   })
   
-
   
-  output$scatterPlot <- renderPlot({
-    input_cate <- sm_id_input()
-    #東京か新潟かを選ぶ。
-
-
-    selected_df <- df %>% dplyr::filter(category_low_id == input_cate )
-    selected_df <- selected_df %>% dplyr::filter(region == input$var_region_s)
+  #小カテ＿散布図ページで選択された小カテゴリのプログラム名リストをUIに出力する。
+  output$select_program <- renderUI({
+    selectInput("program_Name","プログラムを選んで下さい。",
+                choices = merchant_scate_list()
+                )
+  })
+  
+  #散布図_小カテページの小カテが更新されると、同時にSelectInputのchoiceの内容を変える。
+  observe({
+    x<- input$var_sm
+    set_m <- merchant_scate_list()
     
+    if( is.null(x))
+      x <- character(0)
+    
+    scateid<- sm_id_input()
+    updateSelectInput(session,"select_program_up",
+                      label=paste("プログラムを選択して下さい",scateid,sep=":"),
+                      choices= set_m,
+                      selected = tail(set_m,1)
+                      )
+  })
+  
+  merchant_scate_list <- reactive({
+    #入力された小カテIDラベル付
+    scate_id <- sm_id_input()
+
+    #merchant_labを入力されたscaet_idに限定する。
+    merchant_list <- merchant_lab %>% dplyr::filter(category_low_id == scate_id)
+    
+    #実際にデータdf存在するマーチャントのリストにする。
+    exist_mc_list <- df %>%dplyr::filter(category_low_id == scate_id) %>% dplyr::filter(region == input$var_region_s) %>% distinct(merchant_site_id)
+
+    exist_mc_list <- left_join(x=exist_mc_list,y=merchant_list,by="merchant_site_id")
+    program_set <- exist_mc_list$program_name
+    return(program_set)
+    
+  })
+
+
+  output$program_name_selected <-renderPrint({
+    #program_name_selected()
+    #cat(paste("プログラム名",input$program_Name, sep=":"))
+    cat(paste("プログラム名",input$select_program_up, sep=":"))
+    cat("\n")
+    fff<-sm_id_input()
+    cat(paste("小カテ名",input$var_sm,sep=":"))
+    cat("\n")
+    cat(paste("小カテID",fff,sep=":"))
+    cat("\n")
+    cat(paste("プログラム名",merchant_id_input(), sep=":"))
+  })
+  
+  merchant_id_input <- reactive({
+    #tmp_id <- subset(merchant_lab,program_name==input$program_Name)
+    
+    #tmp_id <- subset(merchant_lab,program_name==input$select_program_up)
+    m_id <- as.data.frame(merchant_lab %>% dplyr::filter(program_name == input$select_program_up) %>% select(merchant_site_id))
+    #m_id$merchant_site_id
+    return(m_id$merchant_site_id)
+    #tmp_id : integer
+  })
+  
+
+  # SimulationページのUI入力データをみて、データを絞り込む関数。
+  define_data_sp <- reactive({
+    #小カテゴリか極小カテゴリかによるデータフレーム選択
+      input_cate <- sm_id_input()
+      sl_df <- df %>% dplyr::filter(category_low_id ==input_cate)
+    #UIのregion変数を読んで、地域を新潟、東京のいずれかに絞る。
+      sl_df <- sl_df %>% dplyr::filter(region == input$var_region_s)
+
+    #マーチャントを絞る。
+      input_merchant<- merchant_id_input()
+      sl_df <- sl_df %>% dplyr::filter(merchant_site_id == input_merchant)
+      
+    #チェックボックスで「週番号12を除く」にチェックがあれば、レコードを除く
+    if(input$checkbox_1 == TRUE){    
+      #week_num=12が異常値なのでこれを全て削除
+      sl_df <- sl_df %>% dplyr::filter(week_num != 12)
+    }
+    return(sl_df)
+  })
+  
+  output$testdata<-renderTable({
+    
+    #データを定義する。
+    merchant_df <-define_data_sp()
     #selected_dfが0レコードだった場合、メッセージをoutput$Scatterplotに表示する。
     validate(
-      need(nrow(selected_df) >0,"このカテゴリのデータ数が0レコードのため、散布図を表示できません。")
+      need(nrow(merchant_df) >0,"このカテゴリのデータ数が0レコードのため、散布図を表示できません。")
+    )
+   
+    merchant_df
+  })
+  
+  output$scatterPlot <- renderPlot({
+    sdf <-define_data_sp()
+
+    #selected_dfが0レコードだった場合、メッセージをoutput$Scatterplotに表示する。
+    validate(
+      need(nrow(sdf) >0,"このカテゴリのデータ数が0レコードのため、散布図を表示できません。")
     )
     
-    
-    #checkbox_1の値を判断する
-    
-    if(input$checkbox_1 == TRUE){
-    #week_num=12が異常値なのでこれを全て削除
-      selected_df <- selected_df %>% dplyr::filter(week_num != 12)
-    }
-    font_A <- "IPAMincho"
+    #font_A <- "IPAMincho"
     
     catename <- input$var_sm
+    mid <- merchant_id_input()
     
     #最直近の週は赤でプロットする。
-    latest_week <- max(selected_df$week_num)
-    selected_df <- selected_df %>% dplyr::mutate(latest="FALSE")
-    selected_df[selected_df$week_num==latest_week,"latest"]<- "TRUE"
+    latest_week <- max(sdf$week_num)
+    sdf <- sdf %>% dplyr::mutate(latest="FALSE")
+    sdf[sdf$week_num==latest_week,"latest"]<- "TRUE"
     
     
-    p <-ggplot(selected_df,aes(y=get(input$var_y), x=get(input$var_x),colour=latest))+geom_point()+ylab(input$var_y)+xlab(input$var_x)
-    p <- p+ggtitle(paste("散布図",catename,"地域",input$var_region_s,sep=":"))
+    p <-ggplot(sdf,aes(y=get(input$var_y), x=get(input$var_x),colour=latest))+geom_point()+ylab(input$var_y)+xlab(input$var_x)
+    p <- p+ggtitle(paste("散布図",catename,"地域",input$var_region_s," ","プログラム",mid,sep=":"))
     p <- p + scale_color_manual(values= c("TRUE"="red","FALSE"="blue"))
     #p<-p+theme(text = element_text(family = font_A))
     #p <-p + theme_bw(base_family="HiraMaruProN-W3")
-    p <- p + theme_bw(base_family="IPAPMincho")
+    #p <- p + theme_bw(base_family="IPAPMincho")
     p <- p + theme(axis.text.x = element_text(size=12),
                    axis.text.y = element_text(size=12))
     p <- p + scale_y_continuous(labels = comma)
