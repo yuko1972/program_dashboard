@@ -4,38 +4,56 @@ library(shiny)
 # Define UI for application that draws a histogram
 shinyUI(navbarPage("ATカテゴリ別の分析",
                  tabPanel("Scatterplot",
-                          titlePanel("小カテゴリ毎週次データの散布図"),
-                          sidebarLayout(
-                            sidebarPanel(
-                              selectInput("var_region_s",
-                                          label="東京、新潟を選択して下さい",
-                                          choices = c("Niigata","Tokyo"),
-                                        selected ="Niigata"),
-                              selectInput("var_sm",
-                                          label="小カテゴリを選んで下さい",
-                                          choices = scate_exist$choise_label,
-                                          selected = "1000"),
-                              #任意の変数を2つ選ぶ
-                              selectInput("var_x",
-                                          label="x軸の変数を選択して下さい",
-                                          #choices = names(df)[3:8],
-                                          choices = c("cl_cnt","cv_cnt","media_cnt","cvr"),
-                                          selected = "media_cnt"),
-                              selectInput("var_y",
-                                          label="y軸の変数を選択して下さい",
-                                          #choices = names(df)[3:8],
-                                          choices = c("cl_cnt","cv_cnt","media_cnt","cvr"),
-                                          selected = "cv_cnt"),
-                              hr(),
-                              # 12週目(異常値)を除くかどうか選択
-                              checkboxInput("checkbox_1", label = "週番号12を除く", value = TRUE)
-                            ),
-                            
-                            mainPanel(
-                               # "distPlot"という名前でreactiveなPlotタイプの出力を宣言する
-                              plotOutput("scatterPlot")
-                            )  
-                          ) #close sidebarLayout  
+                  fluidPage(
+                    titlePanel("小カテマーチャント毎の散布図"),
+                    fluidRow(
+                      column(4,wellPanel(
+                        selectInput("var_region_s",
+                                    label="東京、新潟を選択して下さい",
+                                    choices = c("Niigata","Tokyo"),
+                                    selected ="Niigata"),
+                        selectInput("var_sm",
+                                    label="小カテゴリを選んで下さい",
+                                    choices = scate_exist$choise_label,
+                                    selected = "1000"),
+                        #var_smによって変化させるmerchant集合
+                        #htmlOutput("select_program"),
+                        #var_smが変化すると同時にupdateされるマーチャントリスト
+                        selectInput("select_program_up","選択して下さい",
+                                    choices = c("aaa","bbb","ccc")),
+                        #任意の変数を2つ選ぶ
+                        selectInput("var_x",
+                                    label="x軸の変数を選択して下さい",
+                                    #choices = names(df)[3:8],
+                                    choices = c("cl_cnt","cv_cnt","media_cnt","cvr"),
+                                    selected = "media_cnt"),
+                        selectInput("var_y",
+                                    label="y軸の変数を選択して下さい",
+                                    #choices = names(df)[3:8],
+                                    choices = c("cl_cnt","cv_cnt","media_cnt","cvr"),
+                                    selected = "cv_cnt"),
+                        hr(),
+                        # 12週目(異常値)を除くかどうか選択
+                        checkboxInput("checkbox_1", label = "週番号12を除く", value = TRUE)
+                        #submitButton("Submit"),
+                        #actionButton("goButton","Go!")
+                      )),
+                      column(8,
+                             tabsetPanel(position = "below",
+                                         tabPanel("選択カテゴリマーチャント",
+                                                  verbatimTextOutput("program_name_selected")
+                                         ),
+                                         tabPanel("散布図",
+                                                  plotOutput("scatterPlot")
+                                         ),
+                                         tabPanel("テーブル",
+                                                  tableOutput("testdata")
+                                         )
+                              )
+                      )
+                    ) #fluidRowを閉じる。
+                  ) #fluidPageを閉じる
+                  #        titlePanel("小カテゴリ毎週次データの散布図"),
                  ), #close tabPanel,
                  
                  tabPanel("corrmatrix",
@@ -52,7 +70,8 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                                           choices = scate_exist$choise_label,
                                           selected = "1000"),
                               # 12週目(異常値)を除くかどうか選択
-                              checkboxInput("checkbox_3", label = "週番号12を除く", value = TRUE)
+                              checkboxInput("checkbox_3", label = "週番号12を除く", value = TRUE),
+                              actionButton("goButton2","Go!")
                             ), 
                             mainPanel(
                               textOutput("selected_cate_name"),
