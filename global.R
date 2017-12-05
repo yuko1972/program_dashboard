@@ -10,29 +10,38 @@ library(broom)
 library(robustbase)
 library(car)
 library(scales)
+library(tidyverse)
 
 #loadfonts(quiet = TRUE)
 
 # Define UI for application that draws a scatterplot
 #small category label database
 cate_lab <- read.table("scate_list.tsv",sep="\t",header=T,fileEncoding="utf-8")
-fin.1<-"scate_weekly_click.csv"
-fin.2<-"scate_weekly_cv.csv"
-fin.3<-"scate_weekly_clickuu.csv"
-fin.4<-"scate_weekly_cvuu.csv"
-fin.5<-"scate_weekly_media.csv"
+#program_id and program name table
+merchant_lab <- read_csv("merchant_site_list.csv.gz")
 
-df_cl <- read.csv(fin.1,header=T,sep=",")
-df_cv <- read.csv(fin.2,header=T,sep=",")
-df_cluu <- read.csv(fin.3,header=T,sep=",")
-df_cvuu <- read.csv(fin.4,header=T,sep=",")
-df_m <- read.csv(fin.5,header=T,sep=",")
+fin.1<-"scate_weekly_click.csv.gz"
+fin.2<-"scate_weekly_cv.csv.gz"
+fin.3<-"scate_weekly_clickuu.csv.gz"
+fin.4<-"scate_weekly_cvuu.csv.gz"
+fin.5<-"scate_weekly_media.csv.gz"
+
+#df_cl <- read.csv(fin.1,header=T,sep=",")
+#df_cv <- read.csv(fin.2,header=T,sep=",")
+#df_cluu <- read.csv(fin.3,header=T,sep=",")
+#df_cvuu <- read.csv(fin.4,header=T,sep=",")
+#df_m <- read.csv(fin.5,header=T,sep=",")
+df_cl <- read_csv(fin.1)
+df_cv <- read_csv(fin.2)
+df_cluu <- read_csv(fin.3)
+df_cvuu <- read_csv(fin.4)
+df_m <- read_csv(fin.5)
 
 #- merge KPI file and create dataset
-df <- left_join(x=df_cl,y=df_cv,by=c("category_low_id"="category_low_id","week_num"="week_num","region"="region"))
-df <- left_join(x=df,y=df_cluu,by=c("category_low_id"="category_low_id","week_num"="week_num","region"="region"))
-df <- left_join(x=df,y=df_cvuu,by=c("category_low_id"="category_low_id","week_num"="week_num","region"="region"))
-df <- left_join(x=df,y=df_m,by=c("category_low_id"="category_low_id","week_num"="week_num","region"="region"))
+df <- left_join(x=df_cl,y=df_cv,by=c("category_low_id"="category_low_id","week_num"="week_num","region"="region","merchant_site_id"="merchant_site_id"))
+df <- left_join(x=df,y=df_cluu,by=c("category_low_id"="category_low_id","week_num"="week_num","region"="region","merchant_site_id"="merchant_site_id"))
+df <- left_join(x=df,y=df_cvuu,by=c("category_low_id"="category_low_id","week_num"="week_num","region"="region","merchant_site_id"="merchant_site_id"))
+df <- left_join(x=df,y=df_m,by=c("category_low_id"="category_low_id","week_num"="week_num","region"="region","merchant_site_id"="merchant_site_id"))
 
 #- 2017/1/1(=week_num = 52となってしまう週は削除する)
 df <- df %>% dplyr::filter(week_num != 52)
@@ -50,23 +59,23 @@ max_weeknum <- max(df$week_num)
 #--read data of kpi min category
 # min category label
 mcate_lab <- read.table("mcate_list.csv",sep=",",header=T,fileEncoding="utf-8")
-fin.6<-"mcate_weekly_click.csv"
-fin.7<-"mcate_weekly_cv.csv"
-fin.8<-"mcate_weekly_clickuu.csv"
-fin.9<-"mcate_weekly_cvuu.csv"
-fin.10<-"mcate_weekly_media.csv"
+fin.6<-"mcate_weekly_click.csv.gz"
+fin.7<-"mcate_weekly_cv.csv.gz"
+fin.8<-"mcate_weekly_clickuu.csv.gz"
+fin.9<-"mcate_weekly_cvuu.csv.gz"
+fin.10<-"mcate_weekly_media.csv.gz"
 
-mdf_cl <- read.csv(fin.6,header=T,sep=",")
-mdf_cv <- read.csv(fin.7,header=T,sep=",")
-mdf_cluu <- read.csv(fin.8,header=T,sep=",")
-mdf_cvuu <- read.csv(fin.9,header=T,sep=",")
-mdf_m <- read.csv(fin.10,header=T,sep=",")
+mdf_cl <- read_csv(fin.6)
+mdf_cv <- read_csv(fin.7)
+mdf_cluu <- read_csv(fin.8)
+mdf_cvuu <- read_csv(fin.9)
+mdf_m <- read_csv(fin.10)
 
 #- merge KPI dataset
-dfm <- left_join(x=mdf_cl,y=mdf_cv,by=c("category_min_id"="category_min_id","week_num"="week_num","region"="region"))
-dfm <- left_join(x=dfm,y=mdf_cluu,by=c("category_min_id"="category_min_id","week_num"="week_num","region"="region"))
-dfm <- left_join(x=dfm,y=mdf_cvuu,by=c("category_min_id"="category_min_id","week_num"="week_num","region"="region"))
-dfm <- left_join(x=dfm,y=mdf_m,by=c("category_min_id"="category_min_id","week_num"="week_num","region"="region"))
+dfm <- left_join(x=mdf_cl,y=mdf_cv,by=c("category_min_id"="category_min_id","week_num"="week_num","region"="region","merchant_site_id"="merchant_site_id"))
+dfm <- left_join(x=dfm,y=mdf_cluu,by=c("category_min_id"="category_min_id","week_num"="week_num","region"="region","merchant_site_id"="merchant_site_id"))
+dfm <- left_join(x=dfm,y=mdf_cvuu,by=c("category_min_id"="category_min_id","week_num"="week_num","region"="region","merchant_site_id"="merchant_site_id"))
+dfm <- left_join(x=dfm,y=mdf_m,by=c("category_min_id"="category_min_id","week_num"="week_num","region"="region","merchant_site_id"="merchant_site_id"))
 
 #--listup existing min categories in database
 exist_mincate_list<-unique(dfm$category_min_id)
@@ -100,6 +109,7 @@ scate_exist <- inner_join(x=cate_lab,y=exist_scate_df,by=c("category_low_id"="ex
 scate_exist <- scate_exist %>% dplyr::mutate(choise_label=paste(as.character(category_low_id)
                                                                 ,category_low_name,sep="_"))
 
+merchant_lab<- merchant_lab %>% dplyr::mutate(program_name =paste(as.character(merchant_site_id),site_name,sep="_"))
 
 #min category list(all)
 #mincateID_list <- mcate_lab$category_min_id
