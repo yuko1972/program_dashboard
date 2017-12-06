@@ -47,19 +47,40 @@ shinyServer(function(input, output,session) {
   })
   
   #散布図_小カテページの小カテが更新されると、同時にSelectInputのchoiceの内容を変える。
-  observe({
-    x<- input$var_sm
-    set_m <- merchant_scate_list()
-    
-    if( is.null(x))
-      x <- character(0)
-    
+  # observe({
+  #   x<- input$var_sm
+  #   set_m <- merchant_scate_list()
+  #   
+  #   if( is.null(x))
+  #     x <- character(0)
+  #   
+  #   scateid<- sm_id_input()
+  #   updateSelectInput(session,"select_program_up",
+  #                     label=paste("プログラムを選択して下さい",scateid,sep=":"),
+  #                     choices= set_m,
+  #                     selected = tail(set_m,1)
+  #                     )
+  # })
+  
+  observeEvent(input$var_sm,{
     scateid<- sm_id_input()
+    set_m <- merchant_scate_list()
+    updateSelectInput(session,"select_program_up",
+                         label="プログラムを選択して下さい",
+                         choices= set_m,
+                         selected = tail(set_m,1)
+                         )
+  })
+  
+  #merchant_リストの更新は、地域が変更された時にも行う。
+  observeEvent(input$var_region_s,{
+    scateid<- sm_id_input()
+    set_m <- merchant_scate_list()
     updateSelectInput(session,"select_program_up",
                       label=paste("プログラムを選択して下さい",scateid,sep=":"),
                       choices= set_m,
                       selected = tail(set_m,1)
-                      )
+    )
   })
   
   merchant_scate_list <- reactive({
@@ -77,31 +98,54 @@ shinyServer(function(input, output,session) {
     return(program_set)
     
   })
-
+  
+  # ntext <- eventReactive(input$goButton, {
+  #   mc_id <-unlist(strsplit(input$select_program_up,"_"))[1]
+  # })
+  # 
+  # 
+  # output$nText <- renderPrint({
+  #   mid<-ntext()
+  #   cat(paste("プログラム名",mid, sep=":"))
+  #   cat("\n")
+  #   mc_id <-unlist(strsplit(input$select_program_up,"_"))[1]
+  #   cat(paste("プログラム名",mc_id, sep=":"))
+  #   cat("\n")
+  #   cat(paste("小カテ名",input$var_sm,sep=":"))
+  #   fff<-sm_id_input()
+  #   cat("\n")
+  #   cat(paste("小カテID",fff,sep=":"))
+  #   cat("\n")
+  #   cat(paste("プログラム名",merchant_id_input(), sep=":"))
+  #   })
 
   output$program_name_selected <-renderPrint({
     #program_name_selected()
-    #cat(paste("プログラム名",input$program_Name, sep=":"))
+    #cat(paste("htmlプログラム名",input$program_Name, sep=":"))
+    mc_id <-unlist(strsplit(input$select_program_up,"_"))[1]
+#    cat(paste("プログラム名",substring(input$select_program_up,1,6), sep=":"))
     cat(paste("プログラム名",input$select_program_up, sep=":"))
     cat("\n")
     fff<-sm_id_input()
     cat(paste("小カテ名",input$var_sm,sep=":"))
     cat("\n")
-    cat(paste("小カテID",fff,sep=":"))
-    cat("\n")
-    cat(paste("プログラム名",merchant_id_input(), sep=":"))
+#    cat(paste("小カテID",fff,sep=":"))
+#    cat("\n")
+#    cat(paste("プログラム名",merchant_id_input(), sep=":"))
   })
   
   merchant_id_input <- reactive({
     #tmp_id <- subset(merchant_lab,program_name==input$program_Name)
-    
+    mc_id <-unlist(strsplit(input$select_program_up,"_"))[1]
     #tmp_id <- subset(merchant_lab,program_name==input$select_program_up)
-    m_id <- as.data.frame(merchant_lab %>% dplyr::filter(program_name == input$select_program_up) %>% select(merchant_site_id))
-    #m_id$merchant_site_id
-    return(m_id$merchant_site_id)
+    m_id <- as.data.frame(merchant_lab %>% dplyr::filter(merchant_site_id == mc_id) %>% select(merchant_site_id))
+    #m_id <- as.data.frame(subset(merchant_lab,program_name==input$select_program_up)[,"merchant_site_id"])
+    tmp_id<-m_id$merchant_site_id
+    return(tmp_id)
     #tmp_id : integer
   })
   
+
 
   # SimulationページのUI入力データをみて、データを絞り込む関数。
   define_data_sp <- reactive({
@@ -110,7 +154,7 @@ shinyServer(function(input, output,session) {
       sl_df <- df %>% dplyr::filter(category_low_id ==input_cate)
     #UIのregion変数を読んで、地域を新潟、東京のいずれかに絞る。
       sl_df <- sl_df %>% dplyr::filter(region == input$var_region_s)
-
+      
     #マーチャントを絞る。
       input_merchant<- merchant_id_input()
       sl_df <- sl_df %>% dplyr::filter(merchant_site_id == input_merchant)
@@ -123,21 +167,35 @@ shinyServer(function(input, output,session) {
     return(sl_df)
   })
   
-  output$testdata<-renderTable({
-    
-    #データを定義する。
+  
+  #testdef<- eventReactive(input$goButton,{
+  #  merchant_df <-define_data_sp()
+  #})
+  #
+  testdef<- eventReactive(input$select_program_up,{
     merchant_df <-define_data_sp()
+  })
+  
+  output$testdata<-renderTable({
+    #ここでイベントリアクティブな関数testdefを取ってきて使う
+    #データを定義する。
+    #merchant_df <-define_data_sp()
+    merchant_df<- testdef()
     #selected_dfが0レコードだった場合、メッセージをoutput$Scatterplotに表示する。
     validate(
       need(nrow(merchant_df) >0,"このカテゴリのデータ数が0レコードのため、散布図を表示できません。")
     )
-   
     merchant_df
   })
   
-  output$scatterPlot <- renderPlot({
-    sdf <-define_data_sp()
 
+  
+  output$scatterPlot <- renderPlot({
+    catename <- input$var_sm
+    mid <- merchant_id_input()
+    
+    #sdf <-define_data_sp()
+    sdf<- testdef()
     #selected_dfが0レコードだった場合、メッセージをoutput$Scatterplotに表示する。
     validate(
       need(nrow(sdf) >0,"このカテゴリのデータ数が0レコードのため、散布図を表示できません。")
@@ -145,8 +203,6 @@ shinyServer(function(input, output,session) {
     
     #font_A <- "IPAMincho"
     
-    catename <- input$var_sm
-    mid <- merchant_id_input()
     
     #最直近の週は赤でプロットする。
     latest_week <- max(sdf$week_num)
@@ -159,7 +215,7 @@ shinyServer(function(input, output,session) {
     p <- p + scale_color_manual(values= c("TRUE"="red","FALSE"="blue"))
     #p<-p+theme(text = element_text(family = font_A))
     #p <-p + theme_bw(base_family="HiraMaruProN-W3")
-    #p <- p + theme_bw(base_family="IPAPMincho")
+    p <- p + theme_bw(base_family="IPAPMincho")
     p <- p + theme(axis.text.x = element_text(size=12),
                    axis.text.y = element_text(size=12))
     p <- p + scale_y_continuous(labels = comma)
