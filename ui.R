@@ -5,7 +5,7 @@ library(shiny)
 shinyUI(navbarPage("ATカテゴリ別の分析",
                  tabPanel("Scatterplot",
                   fluidPage(
-                    titlePanel("小カテマーチャント毎の散布図"),
+                    titlePanel("マーチャント毎の散布図"),
                     fluidRow(
                       column(4,wellPanel(
                         selectInput("var_region_s",
@@ -34,16 +34,14 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                                     selected = "cv_cnt"),
                         hr(),
                         # 12週目(異常値)を除くかどうか選択
-                        checkboxInput("checkbox_1", label = "週番号12を除く", value = TRUE)
-                        #submitButton("Submit"),
-                        #actionButton("goButton","Go!")
+                        checkboxInput("checkbox_1", label = "週番号12を除く", value = FALSE)
+                        #actionButton("goButton","更新"),
+                        #p("上記条件でグラフを更新するには更新をクリックして下さい。")
                       )),
                       column(8,
                              tabsetPanel(position = "below",
-                                         tabPanel("選択カテゴリマーチャント",
-                                                  verbatimTextOutput("program_name_selected")
-                                         ),
-                                         tabPanel("散布図",
+                                        tabPanel("散布図",
+                                                verbatimTextOutput("program_name_selected"),
                                                   plotOutput("scatterPlot")
                                          ),
                                          tabPanel("テーブル",
@@ -70,8 +68,7 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                                           choices = scate_exist$choise_label,
                                           selected = "1000"),
                               # 12週目(異常値)を除くかどうか選択
-                              checkboxInput("checkbox_3", label = "週番号12を除く", value = TRUE),
-                              actionButton("goButton2","Go!")
+                              checkboxInput("checkbox_3", label = "週番号12を除く", value = FALSE)
                             ), 
                             mainPanel(
                               textOutput("selected_cate_name"),
@@ -107,7 +104,7 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                                           selected = "cv_cnt"),
                               hr(),
                               # 12週目(異常値)を除くかどうか選択
-                              checkboxInput("checkbox_2", label = "週番号12を除く", value = TRUE)
+                              checkboxInput("checkbox_2", label = "週番号12を除く", value = FALSE)
                               
                             ),
                             
@@ -135,7 +132,7 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                                           choices = mcate_exist$choise_label,
                                           selected = "2_DMP用＞ファッション"),
                               # 12週目(異常値)を除くかどうか選択
-                              checkboxInput("checkbox_4", label = "週番号12を除く", value = TRUE)
+                              checkboxInput("checkbox_4", label = "週番号12を除く", value = FALSE)
                             ), 
                             mainPanel(
                               textOutput("selected_min_cate_id"),
@@ -224,7 +221,7 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                                                            selected ="1")
                               ),
                               # 12週目(異常値)を除くかどうか選択
-                              checkboxInput("checkbox_5", label = "週番号12を除く", value = TRUE),
+                              checkboxInput("checkbox_5", label = "週番号12を除く", value = FALSE),
                               radioButtons("radio_model_sim",
                                            label = "モデルを選んで下さい",
                                            choices = c("click数予測モデル"= "1","cv数予測モデル"="2"),
@@ -298,6 +295,10 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                             ),
                             mainPanel(
                               helpText("更新履歴"),
+                              p("更新履歴(2017/12/06)"),
+                              div("Scatterplotページで、マーチャント別の選択を追加した。",style="color:purpl"),
+                              div("地域、小カテゴリの選択肢によって、選択可能なマーチャントがリストアップされる。",style="color:purpl"),
+                              br(),
                               p("更新履歴(2017/11/30)"),
                               div("simulationページで、robustモデルのシミュレーションにも対応",style="color:green"),
                               div("Scatterplot/min_Scatterplotページで、最直近の週のポイントの色を赤で表示させるようにした",style="color:red"),
