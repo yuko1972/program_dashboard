@@ -217,18 +217,25 @@ shinyUI(navbarPage("ATマーチャント別の分析",
                                            selected = "1")
                             ),
                             mainPanel(
-                              verbatimTextOutput("model_type_info"),
-                              conditionalPanel(
-                                condition = "input.radio_model_sim == '1'",
-                                verbatimTextOutput("click_info")
-                              ),
-                              conditionalPanel(
-                                condition = "input.radio_model_sim == '2'",
-                                verbatimTextOutput("model_cv")
-                              ),
-                              numericInput("num", label = h3("入力してください。"), value = 100),
-                              #hr(),
-                              verbatimTextOutput("result_simulation")
+                              #tabsetPanel(
+                                #tabPanel("結果",
+                                  verbatimTextOutput("model_type_info"),
+                                  conditionalPanel(
+                                    condition = "input.radio_model_sim == '1'",
+                                    verbatimTextOutput("click_info")
+                                  ),
+                                  conditionalPanel(
+                                    condition = "input.radio_model_sim == '2'",
+                                    verbatimTextOutput("model_cv")
+                                  ),
+                                  numericInput("num", label = h3("入力してください。"), value = 100),
+                                  hr(),
+                                  verbatimTextOutput("result_simulation")
+                                #),
+                                #tabPanel("確認テーブル",
+                                #         tableOutput("testdata")
+                                #         )
+                              #)
                             )
                           )
                           ),
