@@ -994,13 +994,23 @@ shinyServer(function(input, output,session) {
   #contens of "min_corrmatrix"
   #calculate correlation matrix between KPI at mincate lebel
   output$min_corrmatrix<- renderPlot({
-    input_cate<- min_id_input()
-    selected_df <-dfm %>% dplyr::filter(category_min_id == input_cate)
+    #input_cate<- min_id_input()
+    #極小カテのIDでフィルタ
+    min_id <- as.integer(unlist(strsplit(input$min_cate,"_"))[1])
+    selected_df <-dfm %>% dplyr::filter(category_min_id == min_id)
+    #地域でフィルタ
     selected_df <- selected_df %>% dplyr::filter(region == input$var_region_cr_m)
+    
+    #week_numでフィルタする
+    sum_df<-selected_df %>% dplyr::group_by(week_num) %>% 
+      dplyr::summarise(cl_cnt=sum(cl_cnt),cv_cnt=sum(cv_cnt),cl_uu=sum(cl_uu),cv_uu=sum(cv_uu),media_cnt=sum(media_cnt)) 
+    
+    #--CVRを計算する。
+    sum_df<- sum_df %>% dplyr::mutate(cvr=cv_cnt/cl_cnt)
     
     # errorトラップ
     validate(
-      need(nrow(selected_df) >0,"対象カテゴリのレコード数が0のため計算できません。")
+      need(nrow(sum_df) >0,"対象カテゴリのレコード数が0のため計算できません。")
     )
     
     #if(nrow(selected_df) ==0){
@@ -1009,10 +1019,10 @@ shinyServer(function(input, output,session) {
       
     if(input$checkbox_4 == TRUE){
       #week_num=12が異常値なのでこれを全て削除
-      selected_df <- selected_df %>% dplyr::filter(week_num != 12)
+      sum_df <- sum_df %>% dplyr::filter(week_num != 12)
     }
-    corr<-round(cor(selected_df[4:9]),3)
-    p.mat<- cor_pmat(selected_df[4:9])
+    corr<-round(cor(sum_df[2:7]),3)
+    p.mat<- cor_pmat(sum_df[2:7])
     p<-ggcorrplot(corr,lab=TRUE,lab_size=4,
                   type="lower",p.mat=p.mat,insig="pch",title="KPI間相関行列")
     plot(p) 
@@ -1021,41 +1031,44 @@ shinyServer(function(input, output,session) {
 
   #reactive code
   #task for min cate scatterplot
-  min_id_input_s <- reactive({
-    #get from sidebarPanel
-    tmp_id <- subset(mcate_exist,choise_label==input$var_min)
-    tmp_id$category_min_id
-    #tmp_id : number
-  })
   
   #contens of "min_scatterPlot"
   #crate scatterplot mincate 
   output$min_scatterPlot<- renderPlot({
-    input_cate <-min_id_input_s()
+    #input_cate <-min_id_input_s()
+    input_cate <- as.integer(unlist(strsplit(input$var_min,"_"))[1])
     selected_df <-dfm %>% dplyr::filter(category_min_id == input_cate)
     
     selected_df <- selected_df %>% dplyr::filter(region == input$var_region_m)
     
+    #--12/7追加(極小カテはプログラム毎に成果を足すのはＮＧだからここは注意)
+    #--week_numでKPIを集約する
+    sum_df<-selected_df %>% dplyr::group_by(week_num) %>% 
+      dplyr::summarise(cl_cnt=sum(cl_cnt),cv_cnt=sum(cv_cnt),cl_uu=sum(cl_uu),cv_uu=sum(cv_uu),media_cnt=sum(media_cnt)) 
+    
+    #--CVRを計算する。
+    sum_df<- sum_df %>% dplyr::mutate(cvr=cv_cnt/cl_cnt)
+    
     #レコード数が0だった場合のエラーメッセージ
     validate(
-      need(nrow(selected_df) >0, "このカテゴリのデータ数が0レコードのため、散布図を表示できません。")
+      need(nrow(sum_df) >0, "このカテゴリのデータ数が0レコードのため、散布図を表示できません。")
     )
     
     if(input$checkbox_2 == TRUE){
     #week_num=12が異常値なのでこれを全て削除
-      selected_df <- selected_df %>% dplyr::filter(week_num != 12)
+      sum_df <- sum_df %>% dplyr::filter(week_num != 12)
     }
     
     #最直近の週を区別するlatestカラムを追加
-    selected_df <- selected_df %>% dplyr::mutate(latest="FALSE")
-    latest_week <- max(selected_df$week_num)
-    selected_df[selected_df$week_num == latest_week,"latest"]<- "TRUE"
+    sum_df <- sum_df %>% dplyr::mutate(latest="FALSE")
+    latest_week <- max(sum_df$week_num)
+    sum_df[sum_df$week_num == latest_week,"latest"]<- "TRUE"
     
     
     var_x <- input$var_min_x
     var_y <- input$var_min_y
     
-    p <- ggplot(selected_df,aes(y=get(input$var_min_y), x=get(input$var_min_x),colour=latest))
+    p <- ggplot(sum_df,aes(y=get(input$var_min_y), x=get(input$var_min_x),colour=latest))
     p <- p+geom_point()+ylab(input$var_min_y)+xlab(input$var_min_x)
     p <- p + scale_color_manual(values= c("TRUE"="red","FALSE"="blue"))
     p <- p+ggtitle(paste("散布図",input$var_min,"地域",input$var_region_m,sep=":"))
@@ -1068,51 +1081,78 @@ shinyServer(function(input, output,session) {
   })
   
   
-  #--low category: plot timeseries chart
-  sm_id_input_ts <- reactive({
-    tmp_id <- subset(scate_exist,choise_label==input$cate_ts)
-    tmp_id$category_low_id
-    #tmp_id : integer
+#  #--low category: plot timeseries chart
+#  sm_id_input_ts <- reactive({
+#    tmp_id <- subset(scate_exist,choise_label==input$cate_ts)
+#    tmp_id$category_low_id
+#    #tmp_id : integer
+#  })
+  
+
+
+  
+  #--------------------------------------------------------------------------------
+  #timeseriesページのmerchant_リストの更新を行う。小カテゴリが変化した時。
+  observeEvent(input$cate_ts,{
+    set_m <- merchant_scate_list_ts()
+    updateSelectInput(session,"merchant_ts",
+                      label="プログラムを選択して下さい",
+                      choices= set_m,
+                      selected = tail(set_m,1)
+    )
   })
   
-  #--return category_min_id from input mincategory_label
-  min_id_input_ts <- reactive({
-    tmp_id <- subset(mcate_exist,choise_label==input$cate_ts_m)
-    tmp_id$category_min_id
+  #merchant_リストの更新は、地域が変更された時にも行う。
+  observeEvent(input$var_region_ts,{
+    set_m <- merchant_scate_list_ts()
+    updateSelectInput(session,"merchant_ts",
+                      label="プログラムを選択して下さい",
+                      choices= set_m,
+                      selected = tail(set_m,1)
+    )
   })
   
-  
-  #return small category name that was selected in cormatrix tab
-  output$selected_cate_name_plotvis<-renderText({
-    if(input$radio ==1){
-      paste("小カテゴリ名",input$cate_ts,sep=":")
-    }else{
-      paste("極小カテゴリ名",input$cate_ts_m,sep=":")
-    }
+#--------------------------------------------------------------------------------
+
+  #小カテと地域によって決定する存在するマーチャント集合を作成する関数(timeseriesページ用)
+  #timeseriesページのUIを読み取り、マーチャントの選択肢集合を変える
+  merchant_scate_list_ts <- reactive({
+    
+      #入力された小カテIDラベル付
+      scate_id <- as.integer(unlist(strsplit(input$cate_ts,"_"))[1])
+      
+      #小カテの時にはこちら
+      #merchant_labを入力されたscaet_idに限定する。
+      merchant_list <- merchant_lab %>% dplyr::filter(category_low_id == scate_id)
+      
+      #実際にデータdf存在するマーチャントのリストにする。
+      exist_mc_list <- df %>%dplyr::filter(category_low_id == scate_id) %>% dplyr::filter(region == input$var_region_ts) %>% distinct(merchant_site_id)
+      
+      exist_mc_list <- left_join(x=exist_mc_list,y=merchant_list,by="merchant_site_id")
+
+    program_set <- exist_mc_list$program_name
+    return(program_set)
+    
   })
+
+  #---------以上 scatterplotのmerchantlist更新と同じ-----------------------------------------------------------------------
   
   #create timeseries plot of selected variable of selected low category/ min category.
   output$sm_plot_1 <- renderPlot({
     
-    #小カテゴリの時のデータ選択
-    if(input$radio == 1){
-      input_cate <- sm_id_input_ts()
-      selected_df <-df %>% dplyr::filter(category_low_id ==input_cate)
+    #データ選択
+#      input_cate <- as.integer(unlist(strsplit(input$cate_ts,"_"))[1])
+#      selected_df <-df %>% dplyr::filter(category_low_id ==input_cate)
+      mid <- as.integer(unlist(strsplit(input$merchant_ts,"_"))[1])
+      selected_df<- df %>% dplyr::filter(merchant_site_id == mid)
+    #regionのフィルタ
       selected_df <- selected_df %>% dplyr::filter(region == input$var_region_ts)
 
-      
-      reshape_df <- melt(selected_df,id.vars=c("category_low_id","week_num","region"),
+      #merchant別に縦持ちにする
+      reshape_df <- melt(selected_df,id.vars=c("category_low_id","week_num","region","merchant_site_id"),
                          variable.name ="Varname",value.name="index")
-     }
-    else {#極小カテゴリのときの選択
-      input_cate <- min_id_input_ts()
-      selected_df <-dfm %>% dplyr::filter(category_min_id ==input_cate)
-      selected_df <- selected_df %>% dplyr::filter(region == input$var_region_ts)
-      reshape_df <- melt(selected_df,id.vars=c("category_min_id","week_num","region"),
-                         variable.name ="Varname",value.name="index")
-    }
-    
-    validate(
+
+      validate(
       need(nrow(selected_df) >0,"このカテゴリのデータ数は0です。")
       )
     
@@ -1141,33 +1181,28 @@ shinyServer(function(input, output,session) {
   #tableoutput
   output$view_table <- DT::renderDataTable({
     
-    if(input$radio == 1){
-      input_cate <- sm_id_input_ts()
-      selected_df <-df %>% dplyr::filter(category_low_id ==input_cate)
+      #input_cate <- sm_id_input_ts()
+      #selected_df <-df %>% dplyr::filter(category_low_id ==input_cate)
+      mid <- as.integer(unlist(strsplit(input$merchant_ts,"_"))[1])
+      selected_df<- df %>% dplyr::filter(merchant_site_id == mid)
+    
+      #regionをフィルタする
+      selected_df <- selected_df %>% dplyr::filter(region == input$var_region_ts)
       
       
-    }else{
-      input_cate <- min_id_input_ts()
-      selected_df <-dfm %>% dplyr::filter(category_min_id ==input_cate)
-      
-    }
+      validate(
+        need(nrow(selected_df) >0,"このカテゴリのデータ数は0です。")
+      )
     
-    #regionをフィルタする
-    selected_df <- selected_df %>% dplyr::filter(region == input$var_region_ts)
-    
-    validate(
-      need(nrow(selected_df) >0,"このカテゴリのデータ数は0です。")
-    )
-    
-    #slidebarで指定した期間の表にする
-     start_week <-input$slider_1[1]
-     end_week <-input$slider_1[2]
+      #slidebarで指定した期間の表にする
+      start_week <-input$slider_1[1]
+      end_week <-input$slider_1[2]
      
-    selected_df <- selected_df %>% dplyr::filter(week_num >= start_week, week_num <= end_week)
+      selected_df <- selected_df %>% dplyr::filter(week_num >= start_week, week_num <= end_week)
     
     # Datatableでオプションを指定するときには、server.Rで指定する
    
-    DT::datatable(selected_df,
+      DT::datatable(selected_df,
                   extensions = c('Buttons','Scroller'),
                   rownames=FALSE,
                   options = list(PageLength = 15,
@@ -1184,10 +1219,7 @@ shinyServer(function(input, output,session) {
     formatCurrency(c("cl_cnt","cv_cnt","cl_uu","cv_uu"),currency="", interval=3,mark=",",digits=0)
   })
 
-  #radiobutton
-  output$type_value <- renderText({ input$radio})
-  
-  
+
   get_compare_reg<- reactive({
     # 以下小カテの場合全てのカテゴリに対しての変換無しモデルの実行
     # 小カテか極小カテかでリストを作成
