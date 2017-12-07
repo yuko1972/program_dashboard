@@ -22,29 +22,13 @@ shinyServer(function(input, output,session) {
     #tmp_id : integer
   })
   
-
-  region_input <- reactive({
-    region <- switch(input$var_region_s,
-                     "Niigata"="Niigata",
-                     "Tokyo"="Tokyo")
-    #region <- switch(input$radio_rs,
-    #                 "1"="Niigata",
-    #                 "2"="Tokyo")
-    return(region)
-  })
-  
-
-  output$type_region<-renderText({
-    paste("地域",region_input(),sep=":")
-  })
-  
-  
   #小カテ＿散布図ページで選択された小カテゴリのプログラム名リストをUIに出力する。
-  output$select_program <- renderUI({
-    selectInput("program_Name","プログラムを選んで下さい。",
-                choices = merchant_scate_list()
-                )
-  })
+  #これは、htmlOutput("select_program")で使った関数
+  #output$select_program <- renderUI({
+  #  selectInput("program_Name","プログラムを選んで下さい。",
+  #              choices = merchant_scate_list()
+  #              )
+  #})
   
   #散布図_小カテページの小カテが更新されると、同時にSelectInputのchoiceの内容を変える。
   # observe({
@@ -62,8 +46,10 @@ shinyServer(function(input, output,session) {
   #                     )
   # })
   
+  #scatterplotページのmerchant_リストの更新を行う。小カテゴリが変化した時。
   observeEvent(input$var_sm,{
-    scateid<- sm_id_input()
+    #sm_id_input()は、var_smを読んで、category_low_idを返す関数
+    #scateid<- sm_id_input()
     set_m <- merchant_scate_list()
     updateSelectInput(session,"select_program_up",
                          label="プログラムを選択して下さい",
@@ -74,15 +60,18 @@ shinyServer(function(input, output,session) {
   
   #merchant_リストの更新は、地域が変更された時にも行う。
   observeEvent(input$var_region_s,{
-    scateid<- sm_id_input()
+    #sm_id_input()は、var_smを読んで、category_low_idを返す関数
+    #scateid<- sm_id_input()
     set_m <- merchant_scate_list()
     updateSelectInput(session,"select_program_up",
-                      label=paste("プログラムを選択して下さい",scateid,sep=":"),
+                      label="プログラムを選択して下さい",
                       choices= set_m,
                       selected = tail(set_m,1)
-    )
+                      )
   })
   
+ 
+  #小カテと地域によって決定する存在するマーチャント集合を作成する関数(scatterplotページ用)
   merchant_scate_list <- reactive({
     #入力された小カテIDラベル付
     scate_id <- sm_id_input()
@@ -99,26 +88,6 @@ shinyServer(function(input, output,session) {
     
   })
   
-  # ntext <- eventReactive(input$goButton, {
-  #   mc_id <-unlist(strsplit(input$select_program_up,"_"))[1]
-  # })
-  # 
-  # 
-  # output$nText <- renderPrint({
-  #   mid<-ntext()
-  #   cat(paste("プログラム名",mid, sep=":"))
-  #   cat("\n")
-  #   mc_id <-unlist(strsplit(input$select_program_up,"_"))[1]
-  #   cat(paste("プログラム名",mc_id, sep=":"))
-  #   cat("\n")
-  #   cat(paste("小カテ名",input$var_sm,sep=":"))
-  #   fff<-sm_id_input()
-  #   cat("\n")
-  #   cat(paste("小カテID",fff,sep=":"))
-  #   cat("\n")
-  #   cat(paste("プログラム名",merchant_id_input(), sep=":"))
-  #   })
-
   output$program_name_selected <-renderPrint({
     #program_name_selected()
     #cat(paste("htmlプログラム名",input$program_Name, sep=":"))
@@ -134,21 +103,17 @@ shinyServer(function(input, output,session) {
 #    cat(paste("プログラム名",merchant_id_input(), sep=":"))
   })
   
+  #scatterplotページで選択されたID_マーチャント名を受取、merchatn_site_idだけにして返す関数
+  #これ関数にする必要無いかも。
+  #関数にするなら、引数を受けてIDだけを返すようにしたら
   merchant_id_input <- reactive({
-    #tmp_id <- subset(merchant_lab,program_name==input$program_Name)
     mc_id <-unlist(strsplit(input$select_program_up,"_"))[1]
-    #tmp_id <- subset(merchant_lab,program_name==input$select_program_up)
-    m_id <- as.data.frame(merchant_lab %>% dplyr::filter(merchant_site_id == mc_id) %>% select(merchant_site_id))
-    #m_id <- as.data.frame(subset(merchant_lab,program_name==input$select_program_up)[,"merchant_site_id"])
-    tmp_id<-m_id$merchant_site_id
-    return(tmp_id)
-    #tmp_id : integer
+    return(mc_id)
   })
   
 
-
-  # SimulationページのUI入力データをみて、データを絞り込む関数。
-  define_data_sp <- reactive({
+  # ScatterplotのUi入力データをみて絞り込みする関数
+  define_data_scp <- reactive({
     #小カテゴリか極小カテゴリかによるデータフレーム選択
       input_cate <- sm_id_input()
       sl_df <- df %>% dplyr::filter(category_low_id ==input_cate)
@@ -159,7 +124,7 @@ shinyServer(function(input, output,session) {
       input_merchant<- merchant_id_input()
       sl_df <- sl_df %>% dplyr::filter(merchant_site_id == input_merchant)
       
-    #チェックボックスで「週番号12を除く」にチェックがあれば、レコードを除く
+#    #チェックボックスで「週番号12を除く」にチェックがあれば、レコードを除く
     if(input$checkbox_1 == TRUE){    
       #week_num=12が異常値なのでこれを全て削除
       sl_df <- sl_df %>% dplyr::filter(week_num != 12)
@@ -167,14 +132,38 @@ shinyServer(function(input, output,session) {
     return(sl_df)
   })
   
-  
-  #testdef<- eventReactive(input$goButton,{
-  #  merchant_df <-define_data_sp()
-  #})
-  #
+  #scatterplotのページでマーチャントが変わるごとにデータを差し替える関数。
   testdef<- eventReactive(input$select_program_up,{
-    merchant_df <-define_data_sp()
+    merchant_df <-define_data_scp()
   })
+  
+  # corrmatrixのUi入力データをみて絞り込みする関数
+  define_data_corr <- reactive({
+    #小カテID数値を取得
+    input_cate <- as.integer(unlist(strsplit(input$var_sm_cr,"_"))[1])
+    
+    sdf <- df %>% dplyr::filter(category_low_id ==input_cate)
+    #UIのregion変数を読んで、地域を新潟、東京のいずれかに絞る。
+    sdf <- sdf %>% dplyr::filter(region == input$var_region_cr)
+    
+    #マーチャントを絞る。
+    input_merchant<- as.integer(unlist(strsplit(input$var_merchant_cr,"_"))[1])
+    sdf <- sdf %>% dplyr::filter(merchant_site_id == input_merchant)
+    
+    #    #チェックボックスで「週番号12を除く」にチェックがあれば、レコードを除く
+    if(input$checkbox_3 == TRUE){    
+      #week_num=12が異常値なのでこれを全て削除
+      sdf <- sdf %>% dplyr::filter(week_num != 12)
+    }
+    return(sdf)
+  })
+  
+  #corrmatrixページ用のマーチャント名が変わる毎に変わるデータセット定義
+  datadef<- eventReactive(input$var_merchant_cr,{
+    merchant_df <-define_data_corr()
+    return(merchant_df)
+  })
+  
   
   output$testdata<-renderTable({
     #ここでイベントリアクティブな関数testdefを取ってきて使う
@@ -188,11 +177,21 @@ shinyServer(function(input, output,session) {
     merchant_df
   })
   
-
+#corrmatrix datatable--確認用なので、必要無い。
+  output$view_corrdata<-renderTable({
+    #データを定義する。
+    merchant_df<-datadef()
+    #selected_dfが0レコードだった場合、メッセージをoutput$Scatterplotに表示する。
+    validate(
+      need(nrow(merchant_df) >0,"このカテゴリのデータ数が0レコードのため、散布図を表示できません。")
+    )
+    merchant_df
+  })
+  
   
   output$scatterPlot <- renderPlot({
     catename <- input$var_sm
-    mid <- merchant_id_input()
+    mid <-unlist(strsplit(input$select_program_up,"_"))[1]
     
     #sdf <-define_data_sp()
     sdf<- testdef()
@@ -202,8 +201,6 @@ shinyServer(function(input, output,session) {
     )
     
     #font_A <- "IPAMincho"
-    
-    
     #最直近の週は赤でプロットする。
     latest_week <- max(sdf$week_num)
     sdf <- sdf %>% dplyr::mutate(latest="FALSE")
@@ -226,21 +223,63 @@ shinyServer(function(input, output,session) {
   })
   
   #--low category: correlation matrix page
-  sm_id_input_c <- reactive({
-    tmp_id <- subset(scate_exist,choise_label==input$var_sm_cr)
-    tmp_id$category_low_id
-    #tmp_id : integer
+  #この関数も必要ないんじゃない？inputにあるvar_sm_crの文字列の数値部分を取ってくるだけだから。
+  #sm_id_input_c <- reactive({
+  #  return(as.integer(unlist(strsplit(input$var_sm_cr,"_"))[1]))
+  #})
+
+  #-- make merchant program list for scate_corrmatrix page
+  merchant_scate_list_corr <- reactive({
+    #corrmatrixページで入力された小カテIDラベル付
+    #scate_id <- sm_id_input_c()
+    scate_id <- as.integer(unlist(strsplit(input$var_sm_cr,"_"))[1])
+    
+    #merchant_labを入力されたscaet_idに限定する。
+    merchant_list <- merchant_lab %>% dplyr::filter(category_low_id == scate_id)
+    
+    #実際にデータdf存在するマーチャントのリストにする。
+    exist_mc_list <- df %>%dplyr::filter(category_low_id == scate_id) %>% dplyr::filter(region == input$var_region_cr) %>% distinct(merchant_site_id)
+    
+    exist_mc_list <- left_join(x=exist_mc_list,y=merchant_list,by="merchant_site_id")
+    program_set <- exist_mc_list$program_name
+    return(program_set)
+    
   })
+  
+  #corrmatrixページの小カテを読む
+  observeEvent(input$var_sm_cr,{
+    set_m <- merchant_scate_list_corr()
+    updateSelectInput(session,"var_merchant_cr",
+                      label="プログラムを選択して下さい",
+                      choices= set_m,
+                      selected = tail(set_m,1)
+    )
+  })
+  
+  #merchant_リストの更新は、地域が変更された時にも行う。
+  observeEvent(input$var_region_cr,{
+    set_m <- merchant_scate_list_corr()
+    updateSelectInput(session,"var_merchant_cr",
+                      label="プログラムを選択して下さい",
+                      choices= set_m,
+                      selected = tail(set_m,1)
+    )
+  })
+  
 
 
   #show correlation matrix between kpis
   output$corrmatrix<- renderPlot({
     #reactive function sm_id_input
-    input_cate<- sm_id_input_c()
-    selected_df <-df %>% dplyr::filter(category_low_id == input_cate)
+    #input_cate<- sm_id_input_c()
+    #selected_df <-df %>% dplyr::filter(category_low_id == input_cate)
     # 地域の選択変数：var_region_cr
-    selected_df <- selected_df %>% dplyr::filter(region == input$var_region_cr)
+    #selected_df <- selected_df %>% dplyr::filter(region == input$var_region_cr)
     
+    #mid <- merchant_id_input_cr()
+    #マーチャントのフィルタ
+    #---
+    selected_df<- datadef()
     # errorトラップ
     validate(
       need(nrow(selected_df) >0,"対象カテゴリのレコード数が0のため計算できません。")
@@ -251,9 +290,9 @@ shinyServer(function(input, output,session) {
       selected_df <- selected_df %>% dplyr::filter(week_num != 12)
     }
     
-    corr<-round(cor(selected_df[4:9]),3)
+    corr<-round(cor(selected_df[5:10]),3)
     #p_value
-    p.mat<- cor_pmat(selected_df[4:9])
+    p.mat<- cor_pmat(selected_df[5:10])
     p<-ggcorrplot(corr,lab=TRUE,lab_size=4,
                   type="lower",p.mat=p.mat,insig="pch",title="Correlation matrix between KPI")
     plot(p) 
@@ -261,10 +300,10 @@ shinyServer(function(input, output,session) {
   
   #return small category name that was selected in cormatrix tab
   output$selected_cate_name<-renderText({
-    paste("小カテゴリ名",input$var_sm_cr," 地域",input$var_region_cr,sep=":")
+    paste("小カテゴリ名",input$var_sm_cr," 地域",input$var_region_cr,"プログラム",input$var_mc_cr,sep=":")
   })
 
-
+#---------------------------------------------------------------------------------------------------------------------
   #--low category: Simulation Page
   sm_id_input_sim <- reactive({
     tmp_id <- subset(scate_exist,choise_label==input$cate_sim)
