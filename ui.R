@@ -2,7 +2,7 @@
 library(shiny)
 
 # Define UI for application that draws a histogram
-shinyUI(navbarPage("ATカテゴリ別の分析",
+shinyUI(navbarPage("ATマーチャント別の分析",
                  tabPanel("Scatterplot",
                   fluidPage(
                     titlePanel("マーチャント毎の散布図"),
@@ -154,7 +154,7 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                  ),
 
                  tabPanel("timeseriesplot",
-                          titlePanel("カテゴリ：傾向"),
+                          titlePanel("マーチャント：傾向"),
                           sidebarLayout(
                             sidebarPanel(
                               selectInput("var_region_ts",
@@ -162,24 +162,15 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                                           choices = c("Niigata","Tokyo"),
                                           selected = "Niigata"),
                               br(),
-                                          radioButtons("radio",
-                                          label = "小カテか、極小カテかを選んでください。",
-                                          choices = c("小カテ"= "1", "極小カテ" ="2")),
-                              
+                              selectInput("cate_ts",
+                                          label="小カテゴリを選んで下さい",
+                                          choices=scate_exist$choise_label,
+                                          selected ="1000"),
                               br(),
-                              
-                              conditionalPanel( condition = "input.radio == 1",
-                                                selectInput("cate_ts",
-                                                            label="小カテゴリを選んで下さい",
-                                                            choices=scate_exist$choise_label,
-                                                            selected ="1000")
-                                                ),
-                              conditionalPanel(condition = "input.radio == 2",
-                                               selectInput("cate_ts_m",
-                                                           label="極小カテゴリを選んで下さい",
-                                                           choices=mcate_exist$choise_label,
-                                                           selected ="1")
-                                              ),
+                              selectInput("merchant_ts",
+                                                      label="マーチャントを選んで下さい",
+                                                      choices=c("39916_【トレイダーズ証券】【みんなのＦＸ】","64575_IG証券【旧ＦＸオンラインジャパン】")
+                                                      ),
                               #input: slider for the period of week_number
                               sliderInput("slider_1",
                                           label = "プロットする期間(週番号)を選んで下さい",
@@ -192,10 +183,8 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                               tabsetPanel( position = "below",
                               #output: 時系列プロット：選択した変数
                               tabPanel("Plot",
-                                       #textOutput("selected_cate_name_plotvis"),  
                                        plotOutput("sm_plot_1")),
                               tabPanel("Table",
-                                       #textOutput("selected_cate_name_plotvis"),  
                                        DT::dataTableOutput("view_table"))
                               )
                             )
@@ -203,7 +192,7 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                                              
                  ),
                  tabPanel("Simulation",
-                          titlePanel("カテゴリ別予測値"),
+                          titlePanel("マーチャント別予測値"),
                           sidebarLayout(
                             sidebarPanel(
                               selectInput("var_region_sim",
@@ -211,23 +200,14 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                                           choices = c("Niigata","Tokyo"),
                                           selected = "Niigata"),
                               br(),
-                              radioButtons("radio_s",
-                                           label = "小カテか、極小カテかを選んでください。",
-                                           choices = c("小カテ"= "1", "極小カテ" ="2"),
-                                           selected = 1),
-                              
+                              selectInput("cate_sim",
+                                   label="小カテゴリを選んで下さい",
+                                   choices=scate_exist$choise_label,
+                                   selected ="1000"),
                               br(),
-                              conditionalPanel( condition = "input.radio_s == 1",
-                                                selectInput("cate_sim",
-                                                            label="小カテゴリを選んで下さい",
-                                                            choices=scate_exist$choise_label,
-                                                            selected ="1000")
-                              ),
-                              conditionalPanel(condition = "input.radio_s == 2",
-                                               selectInput("cate_sim_m",
-                                                           label="極小カテゴリを選んで下さい",
-                                                           choices=mcate_exist$choise_label,
-                                                           selected ="1")
+                              selectInput("merchant_sim",
+                                          label="マーチャントを選んで下さい",
+                                          choices=c("39916_【トレイダーズ証券】【みんなのＦＸ】","64575_IG証券【旧ＦＸオンラインジャパン】")
                               ),
                               # 12週目(異常値)を除くかどうか選択
                               checkboxInput("checkbox_5", label = "週番号12を除く", value = FALSE),
@@ -307,6 +287,8 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                               p("更新履歴(2017/12/07)"),
                               div("corrmatrixページで、マーチャント別の選択を追加した。",style="color:blue"),
                               div("12週目を除くチェックボタンは動作しない状態。",style="color:blue"),
+                              div("timeseriesplotページ、極小カテ選択肢を無くし、小カテのみでマーチャント別の選択肢を追加",style="color:blue"),
+                              div("min_scatterplotとmin_corrmatrixで、merchant別週次データを週次で集約して極小カテゴリ毎の結果を表示させる。",style="color:blue"),
                               br(),
                               p("更新履歴(2017/12/06)"),
                               div("Scatterplotページで、マーチャント別の選択を追加した。",style="color:purpl"),
