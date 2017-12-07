@@ -14,14 +14,6 @@ source('global.R')
 # Define server logic required to draw a histogram
 shinyServer(function(input, output,session) {
   
-  #--low category: scatterPlot display
-  #return low_category_code from input variable
-  sm_id_input <- reactive({
-    tmp_id <- subset(scate_exist,choise_label==input$var_sm)
-    tmp_id$category_low_id
-    #tmp_id : integer
-  })
-  
   #小カテ＿散布図ページで選択された小カテゴリのプログラム名リストをUIに出力する。
   #これは、htmlOutput("select_program")で使った関数
   #output$select_program <- renderUI({
@@ -48,8 +40,6 @@ shinyServer(function(input, output,session) {
   
   #scatterplotページのmerchant_リストの更新を行う。小カテゴリが変化した時。
   observeEvent(input$var_sm,{
-    #sm_id_input()は、var_smを読んで、category_low_idを返す関数
-    #scateid<- sm_id_input()
     set_m <- merchant_scate_list()
     updateSelectInput(session,"select_program_up",
                          label="プログラムを選択して下さい",
@@ -60,8 +50,6 @@ shinyServer(function(input, output,session) {
   
   #merchant_リストの更新は、地域が変更された時にも行う。
   observeEvent(input$var_region_s,{
-    #sm_id_input()は、var_smを読んで、category_low_idを返す関数
-    #scateid<- sm_id_input()
     set_m <- merchant_scate_list()
     updateSelectInput(session,"select_program_up",
                       label="プログラムを選択して下さい",
@@ -74,7 +62,7 @@ shinyServer(function(input, output,session) {
   #小カテと地域によって決定する存在するマーチャント集合を作成する関数(scatterplotページ用)
   merchant_scate_list <- reactive({
     #入力された小カテIDラベル付
-    scate_id <- sm_id_input()
+    scate_id <- as.integer(unlist(strsplit(input$var_sm,"_"))[1])
 
     #merchant_labを入力されたscaet_idに限定する。
     merchant_list <- merchant_lab %>% dplyr::filter(category_low_id == scate_id)
@@ -89,39 +77,25 @@ shinyServer(function(input, output,session) {
   })
   
   output$program_name_selected <-renderPrint({
-    #program_name_selected()
-    #cat(paste("htmlプログラム名",input$program_Name, sep=":"))
     mc_id <-unlist(strsplit(input$select_program_up,"_"))[1]
 #    cat(paste("プログラム名",substring(input$select_program_up,1,6), sep=":"))
     cat(paste("プログラム名",input$select_program_up, sep=":"))
     cat("\n")
-    fff<-sm_id_input()
     cat(paste("小カテ名",input$var_sm,sep=":"))
-    cat("\n")
-#    cat(paste("小カテID",fff,sep=":"))
-#    cat("\n")
-#    cat(paste("プログラム名",merchant_id_input(), sep=":"))
   })
   
-  #scatterplotページで選択されたID_マーチャント名を受取、merchatn_site_idだけにして返す関数
-  #これ関数にする必要無いかも。
-  #関数にするなら、引数を受けてIDだけを返すようにしたら
-  merchant_id_input <- reactive({
-    mc_id <-unlist(strsplit(input$select_program_up,"_"))[1]
-    return(mc_id)
-  })
-  
+
 
   # ScatterplotのUi入力データをみて絞り込みする関数
   define_data_scp <- reactive({
     #小カテゴリか極小カテゴリかによるデータフレーム選択
-      input_cate <- sm_id_input()
+      input_cate <- as.integer(unlist(strsplit(input$var_sm,"_"))[1])
       sl_df <- df %>% dplyr::filter(category_low_id ==input_cate)
     #UIのregion変数を読んで、地域を新潟、東京のいずれかに絞る。
       sl_df <- sl_df %>% dplyr::filter(region == input$var_region_s)
       
     #マーチャントを絞る。
-      input_merchant<- merchant_id_input()
+      input_merchant<- as.integer(unlist(strsplit(input$select_program_up,"_"))[1])
       sl_df <- sl_df %>% dplyr::filter(merchant_site_id == input_merchant)
       
 #    #チェックボックスで「週番号12を除く」にチェックがあれば、レコードを除く
@@ -134,7 +108,7 @@ shinyServer(function(input, output,session) {
   
   #scatterplotのページでマーチャントが変わるごとにデータを差し替える関数。
   testdef<- eventReactive(input$select_program_up,{
-    merchant_df <-define_data_scp()
+    define_data_scp()
   })
   
   # corrmatrixのUi入力データをみて絞り込みする関数
@@ -222,16 +196,10 @@ shinyServer(function(input, output,session) {
     
   })
   
-  #--low category: correlation matrix page
-  #この関数も必要ないんじゃない？inputにあるvar_sm_crの文字列の数値部分を取ってくるだけだから。
-  #sm_id_input_c <- reactive({
-  #  return(as.integer(unlist(strsplit(input$var_sm_cr,"_"))[1]))
-  #})
 
   #-- make merchant program list for scate_corrmatrix page
   merchant_scate_list_corr <- reactive({
     #corrmatrixページで入力された小カテIDラベル付
-    #scate_id <- sm_id_input_c()
     scate_id <- as.integer(unlist(strsplit(input$var_sm_cr,"_"))[1])
     
     #merchant_labを入力されたscaet_idに限定する。
@@ -270,15 +238,7 @@ shinyServer(function(input, output,session) {
 
   #show correlation matrix between kpis
   output$corrmatrix<- renderPlot({
-    #reactive function sm_id_input
-    #input_cate<- sm_id_input_c()
-    #selected_df <-df %>% dplyr::filter(category_low_id == input_cate)
-    # 地域の選択変数：var_region_cr
-    #selected_df <- selected_df %>% dplyr::filter(region == input$var_region_cr)
-    
-    #mid <- merchant_id_input_cr()
-    #マーチャントのフィルタ
-    #---
+
     selected_df<- datadef()
     # errorトラップ
     validate(
@@ -304,30 +264,13 @@ shinyServer(function(input, output,session) {
   })
 
 #---------------------------------------------------------------------------------------------------------------------
-  #--low category: Simulation Page
-  sm_id_input_sim <- reactive({
-    tmp_id <- subset(scate_exist,choise_label==input$cate_sim)
-    tmp_id$category_low_id
-  })
-  
-  #-- min category: Simulation Page
-  min_id_input_sim <- reactive({
-    tmp_id <- subset(mcate_exist,choise_label==input$cate_sim_m)
-    tmp_id$category_min_id
-  })
-  
-  
+
+
   # SimulationページのUI入力データをみて、データを絞り込む関数。
   define_data <- reactive({
-    #小カテゴリか極小カテゴリかによるデータフレーム選択
-    if(input$radio_s == 1){
-      input_cate <- sm_id_input_sim()
-      selected_df <-df %>% dplyr::filter(category_low_id ==input_cate)
-    }
-    else {#極小カテゴリのときのデータフレーム
-      input_cate <- min_id_input_sim()
-      selected_df <-dfm %>% dplyr::filter(category_min_id ==input_cate)
-    }
+    #小カテゴリしか選択できない
+    input_mct <- as.integer(unlist(strsplit(input$merchant_sim,"_"))[1])
+    selected_df <-df %>% dplyr::filter(category_low_id ==input_mct)
     
     #チェックボックスで「週番号12を除く」にチェックがあれば、レコードを除く
     if(input$checkbox_5 == TRUE){    
@@ -342,6 +285,24 @@ shinyServer(function(input, output,session) {
   })
   
   
+  
+  #simulationページでマーチャントが変わるごとにデータを差し替える関数。
+  define_data_rec<- eventReactive(input$merchant_sim,{
+    #define_data()はreactiveな関数
+    define_data()
+  })
+  
+  output$testviewdata<- renderTable({
+      #ここでイベントリアクティブな関数define_data_recを取ってきて使う
+      merchant_df<- define_data_rec()
+      #selected_dfが0レコードだった場合、メッセージをoutput$Scatterplotに表示する。
+      validate(
+        need(nrow(merchant_df) >0,"このカテゴリのデータ数が0レコードです。")
+      )
+      merchant_df
+    })
+
+  
   #return Simulation Page output-- 
   # regression model:1)media effect to click
   # 2) click effect to media
@@ -351,7 +312,8 @@ shinyServer(function(input, output,session) {
   calc_reg <- function(obj_var){
     
     #Simulationページのinput情報からデータをフィルタして定義する。
-    selected_df <- define_data()
+    #selected_df <- define_data()
+    selected_df<- define_data_rec()
     
     #shiny用、データ数が0だった時のエラーメッセージ
     validate(need( nrow(selected_df)>0,"データが0行です。計算できません。" )
@@ -559,7 +521,7 @@ shinyServer(function(input, output,session) {
   }
  # })
 
-
+ #--選択したmerchant別のシミュレーションを行う
   output$model_type_info<-renderText({
     m_name <- switch(input$radio_model_sim,
                          "1" = "media数でclick数を説明するモデル",
@@ -567,6 +529,55 @@ shinyServer(function(input, output,session) {
     )
     paste("モデル：",m_name,sep="")
   })
+  
+  
+  #--------------------------------------------------------------------------------
+  #simulationページのmerchant_リストの更新を行う。小カテゴリが変化した時。
+  observeEvent(input$cate_sim,{
+    set_m <- merchant_scate_list_sim()
+    updateSelectInput(session,"merchant_sim",
+                      label="プログラムを選択して下さい",
+                      choices= set_m,
+                      selected = tail(set_m,1)
+    )
+  })
+  
+  #merchant_リストの更新は、地域が変更された時にも行う。
+  observeEvent(input$var_region_sim,{
+    set_m <- merchant_scate_list_sim()
+    updateSelectInput(session,"merchant_sim",
+                      label="プログラムを選択して下さい",
+                      choices= set_m,
+                      selected = tail(set_m,1)
+    )
+  })
+  
+  
+  
+  #小カテと地域によって決定する存在するマーチャント集合を作成する関数(timeseriesページ用)
+  #timeseriesページのUIを読み取り、マーチャントの選択肢集合を変える
+  merchant_scate_list_sim <- reactive({
+    
+    #入力された小カテIDラベル付
+    scate_id <- as.integer(unlist(strsplit(input$cate_sim,"_"))[1])
+    
+    #小カテの時にはこちら
+    #merchant_labを入力されたscaet_idに限定する。
+    merchant_list <- merchant_lab %>% dplyr::filter(category_low_id == scate_id)
+    
+    #実際にデータdf存在するマーチャントのリストにする。
+    rg<-input$var_region_sim
+    exist_mc_list <- df %>%dplyr::filter(category_low_id == scate_id) %>% dplyr::filter(region == rg) %>% distinct(merchant_site_id)
+    
+    exist_mc_list <- left_join(x=exist_mc_list,y=merchant_list,by="merchant_site_id")
+    
+    program_set <- exist_mc_list$program_name
+    return(program_set)
+    
+  })
+  
+  #---------以上 timeseriesページのmerchant_リストの更新を行う-----------------------------------------------------------------------
+  
   
 
   output$check_value<- renderText({
@@ -576,7 +587,7 @@ shinyServer(function(input, output,session) {
   #effect of media to click
   output$click_info <- renderPrint({
     
-    #データを小カテ、極小カテのいずれかに決定し、回帰モデルを実行
+    #小カテのマーチャントを決定し、データをセットして回帰モデルを実行
     val_df <- calc_reg(1)
     
     
@@ -699,7 +710,7 @@ shinyServer(function(input, output,session) {
     return(hantei_str)
   }
   
-
+  #simulationを行うページ
   #click_infoの結果モデルを使い、予測値を返す
   output$result_simulation<- renderPrint({
     
@@ -714,7 +725,8 @@ shinyServer(function(input, output,session) {
     )
     
     #dataを確定する。
-    df_sim <- define_data()
+    #df_sim <- define_data()
+    df_sim <- define_data_rec()
     
     #モデルを選ぶ。
     #obj_var ==1 説明変数がmedia_cnt,目的変数がcl_cntのモデル
@@ -1112,7 +1124,7 @@ shinyServer(function(input, output,session) {
     )
   })
   
-#--------------------------------------------------------------------------------
+
 
   #小カテと地域によって決定する存在するマーチャント集合を作成する関数(timeseriesページ用)
   #timeseriesページのUIを読み取り、マーチャントの選択肢集合を変える
@@ -1126,7 +1138,8 @@ shinyServer(function(input, output,session) {
       merchant_list <- merchant_lab %>% dplyr::filter(category_low_id == scate_id)
       
       #実際にデータdf存在するマーチャントのリストにする。
-      exist_mc_list <- df %>%dplyr::filter(category_low_id == scate_id) %>% dplyr::filter(region == input$var_region_ts) %>% distinct(merchant_site_id)
+      rg<-input$var_region_ts
+      exist_mc_list <- df %>%dplyr::filter(category_low_id == scate_id) %>% dplyr::filter(region ==rg ) %>% distinct(merchant_site_id)
       
       exist_mc_list <- left_join(x=exist_mc_list,y=merchant_list,by="merchant_site_id")
 
@@ -1135,14 +1148,12 @@ shinyServer(function(input, output,session) {
     
   })
 
-  #---------以上 scatterplotのmerchantlist更新と同じ-----------------------------------------------------------------------
+#---------以上 timeseriesページのmerchant_リストの更新を行う-----------------------------------------------------------------------
   
   #create timeseries plot of selected variable of selected low category/ min category.
   output$sm_plot_1 <- renderPlot({
     
     #データ選択
-#      input_cate <- as.integer(unlist(strsplit(input$cate_ts,"_"))[1])
-#      selected_df <-df %>% dplyr::filter(category_low_id ==input_cate)
       mid <- as.integer(unlist(strsplit(input$merchant_ts,"_"))[1])
       selected_df<- df %>% dplyr::filter(merchant_site_id == mid)
     #regionのフィルタ
