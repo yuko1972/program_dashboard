@@ -20,7 +20,7 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                         #htmlOutput("select_program"),
                         #var_smが変化すると同時にupdateされるマーチャントリスト
                         selectInput("select_program_up","選択して下さい",
-                                    choices = c("aaa","bbb","ccc")),
+                                    choices = c("33477_ひまわり証券【ひまわりFX】")),
                         #任意の変数を2つ選ぶ
                         selectInput("var_x",
                                     label="x軸の変数を選択して下さい",
@@ -41,7 +41,7 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                       column(8,
                              tabsetPanel(position = "below",
                                         tabPanel("散布図",
-                                                verbatimTextOutput("program_name_selected"),
+                                                  verbatimTextOutput("program_name_selected"),
                                                   plotOutput("scatterPlot")
                                          ),
                                          tabPanel("テーブル",
@@ -55,7 +55,7 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                  ), #close tabPanel,
                  
                  tabPanel("corrmatrix",
-                          titlePanel("小カテゴリ毎週次データKPI間相関行列"),
+                          titlePanel("マーチャント毎週次データKPI間相関行列"),
                           sidebarLayout(
                             sidebarPanel(
                               selectInput("var_region_cr",
@@ -67,15 +67,24 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                                           label="小カテゴリを選んで下さい",
                                           choices = scate_exist$choise_label,
                                           selected = "1000"),
+                              selectInput("var_merchant_cr","選択して下さい",
+                                          choices = c("33477_ひまわり証券【ひまわりFX】")),
                               # 12週目(異常値)を除くかどうか選択
                               checkboxInput("checkbox_3", label = "週番号12を除く", value = FALSE)
                             ), 
                             mainPanel(
-                              textOutput("selected_cate_name"),
-                              helpText("値に×がついているセルは、列の変数と行の変数のペアが有意でないことを意味します。"),
-                              div("当該指標の標準偏差が0になる時、2つの変数間の相関係数は求められません。",style="color:blue"),
-                              div("その場合、当該指標の列が非表示になります",style="color:blue" ),
-                              plotOutput("corrmatrix")
+                              tabsetPanel(position = "below",
+                                          tabPanel("相関行列",
+                                                   textOutput("selected_cate_name"),
+                                                   helpText("値に×がついているセルは、列の変数と行の変数のペアが有意でないことを意味します。"),
+                                                   div("当該指標の標準偏差が0になる時、2つの変数間の相関係数は求められません。",style="color:blue"),
+                                                   div("その場合、当該指標の列が非表示になります",style="color:blue" ),
+                                                   plotOutput("corrmatrix")
+                                          ),
+                                          tabPanel("テーブル",
+                                                   tableOutput("view_corrdata")
+                                          )
+                              )#tabsetPanelの終わり
                             )
                           )
                  ),
@@ -295,6 +304,10 @@ shinyUI(navbarPage("ATカテゴリ別の分析",
                             ),
                             mainPanel(
                               helpText("更新履歴"),
+                              p("更新履歴(2017/12/07)"),
+                              div("corrmatrixページで、マーチャント別の選択を追加した。",style="color:blue"),
+                              div("12週目を除くチェックボタンは動作しない状態。",style="color:blue"),
+                              br(),
                               p("更新履歴(2017/12/06)"),
                               div("Scatterplotページで、マーチャント別の選択を追加した。",style="color:purpl"),
                               div("地域、小カテゴリの選択肢によって、選択可能なマーチャントがリストアップされる。",style="color:purpl"),
