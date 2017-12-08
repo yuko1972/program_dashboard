@@ -14,30 +14,6 @@ source('global.R')
 # Define server logic required to draw a histogram
 shinyServer(function(input, output,session) {
   
-  #小カテ＿散布図ページで選択された小カテゴリのプログラム名リストをUIに出力する。
-  #これは、htmlOutput("select_program")で使った関数
-  #output$select_program <- renderUI({
-  #  selectInput("program_Name","プログラムを選んで下さい。",
-  #              choices = merchant_scate_list()
-  #              )
-  #})
-  
-  #散布図_小カテページの小カテが更新されると、同時にSelectInputのchoiceの内容を変える。
-  # observe({
-  #   x<- input$var_sm
-  #   set_m <- merchant_scate_list()
-  #   
-  #   if( is.null(x))
-  #     x <- character(0)
-  #   
-  #   scateid<- sm_id_input()
-  #   updateSelectInput(session,"select_program_up",
-  #                     label=paste("プログラムを選択して下さい",scateid,sep=":"),
-  #                     choices= set_m,
-  #                     selected = tail(set_m,1)
-  #                     )
-  # })
-  
   #scatterplotページのmerchant_リストの更新を行う。小カテゴリが変化した時。
   observeEvent(input$var_sm,{
     set_m <- merchant_scate_list()
@@ -68,7 +44,8 @@ shinyServer(function(input, output,session) {
     merchant_list <- merchant_lab %>% dplyr::filter(category_low_id == scate_id)
     
     #実際にデータdf存在するマーチャントのリストにする。
-    exist_mc_list <- df %>%dplyr::filter(category_low_id == scate_id) %>% dplyr::filter(region == input$var_region_s) %>% distinct(merchant_site_id)
+    rg <- input$var_region_s
+    exist_mc_list <- df %>%dplyr::filter(category_low_id == scate_id) %>% dplyr::filter(region == rg) %>% distinct(merchant_site_id)
 
     exist_mc_list <- left_join(x=exist_mc_list,y=merchant_list,by="merchant_site_id")
     program_set <- exist_mc_list$program_name
@@ -77,8 +54,6 @@ shinyServer(function(input, output,session) {
   })
   
   output$program_name_selected <-renderPrint({
-    mc_id <-unlist(strsplit(input$select_program_up,"_"))[1]
-#    cat(paste("プログラム名",substring(input$select_program_up,1,6), sep=":"))
     cat(paste("プログラム名",input$select_program_up, sep=":"))
     cat("\n")
     cat(paste("小カテ名",input$var_sm,sep=":"))
@@ -88,11 +63,8 @@ shinyServer(function(input, output,session) {
 
   # ScatterplotのUi入力データをみて絞り込みする関数
   define_data_scp <- reactive({
-    #小カテゴリか極小カテゴリかによるデータフレーム選択
-      input_cate <- as.integer(unlist(strsplit(input$var_sm,"_"))[1])
-      sl_df <- df %>% dplyr::filter(category_low_id ==input_cate)
     #UIのregion変数を読んで、地域を新潟、東京のいずれかに絞る。
-      sl_df <- sl_df %>% dplyr::filter(region == input$var_region_s)
+      sl_df <- df %>% dplyr::filter(region == input$var_region_s)
       
     #マーチャントを絞る。
       input_merchant<- as.integer(unlist(strsplit(input$select_program_up,"_"))[1])
@@ -106,43 +78,16 @@ shinyServer(function(input, output,session) {
     return(sl_df)
   })
   
-  #scatterplotのページでマーチャントが変わるごとにデータを差し替える関数。
+  #scatterplotのページでマーチャントが更新されるごとに対象のデータを返す関数。
   testdef<- eventReactive(input$select_program_up,{
     define_data_scp()
   })
   
-  # corrmatrixのUi入力データをみて絞り込みする関数
-  define_data_corr <- reactive({
-    #小カテID数値を取得
-    input_cate <- as.integer(unlist(strsplit(input$var_sm_cr,"_"))[1])
-    
-    sdf <- df %>% dplyr::filter(category_low_id ==input_cate)
-    #UIのregion変数を読んで、地域を新潟、東京のいずれかに絞る。
-    sdf <- sdf %>% dplyr::filter(region == input$var_region_cr)
-    
-    #マーチャントを絞る。
-    input_merchant<- as.integer(unlist(strsplit(input$var_merchant_cr,"_"))[1])
-    sdf <- sdf %>% dplyr::filter(merchant_site_id == input_merchant)
-    
-    #    #チェックボックスで「週番号12を除く」にチェックがあれば、レコードを除く
-    if(input$checkbox_3 == TRUE){    
-      #week_num=12が異常値なのでこれを全て削除
-      sdf <- sdf %>% dplyr::filter(week_num != 12)
-    }
-    return(sdf)
-  })
-  
-  #corrmatrixページ用のマーチャント名が変わる毎に変わるデータセット定義
-  datadef<- eventReactive(input$var_merchant_cr,{
-    merchant_df <-define_data_corr()
-    return(merchant_df)
-  })
-  
-  
+
+  #scatterplotページの確認用テーブル
   output$testdata<-renderTable({
     #ここでイベントリアクティブな関数testdefを取ってきて使う
     #データを定義する。
-    #merchant_df <-define_data_sp()
     merchant_df<- testdef()
     #selected_dfが0レコードだった場合、メッセージをoutput$Scatterplotに表示する。
     validate(
@@ -151,23 +96,14 @@ shinyServer(function(input, output,session) {
     merchant_df
   })
   
-#corrmatrix datatable--確認用なので、必要無い。
-  output$view_corrdata<-renderTable({
-    #データを定義する。
-    merchant_df<-datadef()
-    #selected_dfが0レコードだった場合、メッセージをoutput$Scatterplotに表示する。
-    validate(
-      need(nrow(merchant_df) >0,"このカテゴリのデータ数が0レコードのため、散布図を表示できません。")
-    )
-    merchant_df
-  })
+
   
-  
+  #小カテ毎散布図を表示
   output$scatterPlot <- renderPlot({
+    #ggplotのタイトル用ラベルを取得
     catename <- input$var_sm
     mid <-unlist(strsplit(input$select_program_up,"_"))[1]
-    
-    #sdf <-define_data_sp()
+  
     sdf<- testdef()
     #selected_dfが0レコードだった場合、メッセージをoutput$Scatterplotに表示する。
     validate(
@@ -224,7 +160,7 @@ shinyServer(function(input, output,session) {
     )
   })
   
-  #merchant_リストの更新は、地域が変更された時にも行う。
+  #corrmatrixページの地域変数を読む。merchant_リストの更新は、地域が変更された時にも行う。
   observeEvent(input$var_region_cr,{
     set_m <- merchant_scate_list_corr()
     updateSelectInput(session,"var_merchant_cr",
@@ -234,7 +170,28 @@ shinyServer(function(input, output,session) {
     )
   })
   
-
+  # corrmatrixのUi入力データをみて絞り込みする関数
+  define_data_corr <- reactive({
+    #UIのregion変数を読んで、地域を新潟、東京のいずれかに絞る。
+    sdf <- df %>% dplyr::filter(region == input$var_region_cr)
+    
+    #マーチャントを絞る。
+    input_merchant<- as.integer(unlist(strsplit(input$var_merchant_cr,"_"))[1])
+    sdf <- sdf %>% dplyr::filter(merchant_site_id == input_merchant)
+    
+    #    #チェックボックスで「週番号12を除く」にチェックがあれば、レコードを除く
+    if(input$checkbox_3 == TRUE){    
+      #week_num=12が異常値なのでこれを全て削除
+      sdf <- sdf %>% dplyr::filter(week_num != 12)
+    }
+    return(sdf)
+  })
+  
+  #corrmatrixページ用のマーチャント名が変わる毎にデータセットを変えて返す関数
+  datadef<- eventReactive(input$var_merchant_cr,{
+    define_data_corr()
+  })
+  
 
   #show correlation matrix between kpis
   output$corrmatrix<- renderPlot({
@@ -260,17 +217,27 @@ shinyServer(function(input, output,session) {
   
   #return small category name that was selected in cormatrix tab
   output$selected_cate_name<-renderText({
-    paste("小カテゴリ名",input$var_sm_cr," 地域",input$var_region_cr,"プログラム",input$var_mc_cr,sep=":")
+    paste("小カテゴリ名",input$var_sm_cr," 地域",input$var_region_cr,"プログラム",input$var_merchant_cr,sep=":")
   })
 
+  #corrmatrix datatable--確認用なので、必要無い。
+  output$view_corrdata<-renderTable({
+    #データを定義する。
+    merchant_df<-datadef()
+    #selected_dfが0レコードだった場合、メッセージをoutput$Scatterplotに表示する。
+    validate(
+      need(nrow(merchant_df) >0,"このカテゴリのデータ数が0レコードのため、表示できません。")
+    )
+    merchant_df
+  })  
 #---------------------------------------------------------------------------------------------------------------------
 
 
   # SimulationページのUI入力データをみて、データを絞り込む関数。
   define_data <- reactive({
-    #小カテゴリしか選択できない
+    #merchantをselect
     input_mct <- as.integer(unlist(strsplit(input$merchant_sim,"_"))[1])
-    selected_df <-df %>% dplyr::filter(category_low_id ==input_mct)
+    selected_df <-df %>% dplyr::filter(merchant_site_id ==input_mct)
     
     #チェックボックスで「週番号12を除く」にチェックがあれば、レコードを除く
     if(input$checkbox_5 == TRUE){    
@@ -279,7 +246,8 @@ shinyServer(function(input, output,session) {
     }
     #UIのregion変数を読んで、地域を新潟、東京のいずれかに絞る。
     #小カテ、極小カテ共通
-    selected_df <- selected_df %>% dplyr::filter(region == input$var_region_sim)
+    rg <- input$var_region_sim
+    selected_df <- selected_df %>% dplyr::filter(region == rg)
     return(selected_df)
     
   })
@@ -292,7 +260,7 @@ shinyServer(function(input, output,session) {
     define_data()
   })
   
-  output$testviewdata<- renderTable({
+  output$testviewtable<- renderTable({
       #ここでイベントリアクティブな関数define_data_recを取ってきて使う
       merchant_df<- define_data_rec()
       #selected_dfが0レコードだった場合、メッセージをoutput$Scatterplotに表示する。
@@ -306,21 +274,19 @@ shinyServer(function(input, output,session) {
   #return Simulation Page output-- 
   # regression model:1)media effect to click
   # 2) click effect to media
-  # reactive({})にしなくても、中身のsm_id_input_sim()などがreactiveだから、書き換わっている？
- # 引数がある関数は、reactive({})とは書けないか？
+  # 引数がある関数は、reactive({})とは書けないか？
     #calc_reg <-reactive({
   calc_reg <- function(obj_var){
     
-    #Simulationページのinput情報からデータをフィルタして定義する。
-    #selected_df <- define_data()
+    #Simulationページのinput情報からプログラムにeventReactiveにデータを取得。
     selected_df<- define_data_rec()
     
     #shiny用、データ数が0だった時のエラーメッセージ
-    validate(need( nrow(selected_df)>0,"データが0行です。計算できません。" )
+    validate(need( nrow(selected_df)>=5,"データが5未満です。計算できません。" )
              )
     
-    if(nrow(selected_df) ==0){
-      stop()
+    if(nrow(selected_df) <=5){
+      stop("計算できません")
     }
     
     
@@ -506,14 +472,17 @@ shinyServer(function(input, output,session) {
     good_model <- good_model %>%  dplyr::arrange(desc(r2)) %>% head(1)
     
     #最直近のxの値(media_cnt,cl_cnt)の値を出力に持たせる
-    tmp<-selected_df %>% dplyr::arrange(desc(week_num)) %>% head(1)%>% dplyr::select(x_var)
-    #tmp<-tmp$media_cnt
-    tmp <- tmp[,c(x_var)]
-    good_model$last_x <- tmp
+    max_week<- max(selected_df$week_num)
+    tmp_df <-selected_df %>%dplyr::select(week_num,x_var) %>% dplyr::filter(week_num ==max_week)
+    #clickとmedia_cntなのでintegerでオブジェクトにする
+    tmp_latest_x <- as.integer(tmp_df[,x_var])
+    good_model$last_x <- tmp_latest_x
     
     #最直近のy(cl_cnt,cv_cnt)の観測値を出力に持たせる
-    #parm_good_model$last_obs.y<- selected_df$cl_cnt[nrow(selected_df)]
-    good_model$last_obs.y<-selected_df[nrow(selected_df),c(y_var)]
+    tmp_df2 <-selected_df %>%dplyr::select(week_num,y_var) %>% dplyr::filter(week_num ==max_week)
+    tmp_latest_y <- as.integer(tmp_df2[,y_var])
+
+    good_model$last_obs.y<-tmp_latest_y
     
      
     return(good_model)
@@ -588,9 +557,45 @@ shinyServer(function(input, output,session) {
   output$click_info <- renderPrint({
     
     #小カテのマーチャントを決定し、データをセットして回帰モデルを実行
-    val_df <- calc_reg(1)
+    #val_df <- calc_reg(1)
+    tryCatch(
+      {
+      #エラーの時に例外処理を行いたいコード
+      val_df<-calc_reg(1)
+      val_df$model_type<-"なし"
+      val_df$estimate<-NA
+      val_df$t_statistic<-NA
+      val_df$t_pval <- NA
+      val_df$intercept<-NA
+      val_df$low_ci<-NA
+      val_df$upper_ci<-NA
+      val_df$r2<-NA
+      val_df$f_statistic<-NA
+      val_df$f_pval<-NA
+      val_df$last_y<-NA
+      val_df$last_x<-NA
+      val_df$last_obs.y<-NA
+      },
+      error = function(e){
+        message("ERROR!")
+        message(e)
+      },
+      finally={
+       val_df<- calc_reg(1)
+       
+      },
+      silent=TRUE
+    )
     
+    #-----説明変数の分散が0で計算結果が偏回帰係数がNAになる場合のエラートラップ
+    #get_parameters()関数で出力結果がNAとさせている。
+    validate(
+      need(val_df$estimate !="NA","説明変数の分散が0のため計算できません。")
+    )
+
+    if( val_df$estimate =="NA"){stop()}
     
+    #----------------------------------------------------------
     #モデル種類
     model_type <- val_df$model
     
@@ -877,9 +882,46 @@ shinyServer(function(input, output,session) {
   #effect of click to cv
   output$model_cv <- renderPrint({
     
-    #データを小カテ、極小カテのいずれかに決定し、回帰モデルを実行
     #calc_reg(引数=2で、cvをclickで説明するモデル)
-    val_df <- calc_reg(2)
+#    val_df <- calc_reg(2)
+    #小カテのマーチャントを決定し、データをセットして回帰モデルを実行
+    tryCatch(
+      {
+        #エラーの時に例外処理を行いたいコード
+        val_df<-calc_reg(2)
+        val_df$model_type<-"なし"
+        val_df$estimate<-NA
+        val_df$t_statistic<-NA
+        val_df$t_pval <- NA
+        val_df$intercept<-NA
+        val_df$low_ci<-NA
+        val_df$upper_ci<-NA
+        val_df$r2<-NA
+        val_df$f_statistic<-NA
+        val_df$f_pval<-NA
+        val_df$last_y<-NA
+        val_df$last_x<-NA
+        val_df$last_obs.y<-NA
+      },
+      error = function(e){
+        message("ERROR!")
+        message(e)
+      },
+      finally={
+        val_df<- calc_reg(2)
+        
+      },
+      silent=TRUE
+    )
+    
+    #-----説明変数の分散が0で計算結果が偏回帰係数がNAになる場合のエラートラップ
+    #get_parameters()関数で出力結果がNAとさせている。
+    validate(
+      need(val_df$estimate !="NA","説明変数の分散が0のため計算できません。")
+    )
+    
+    if( val_df$estimate =="NA"){stop()}
+    
     #モデル種類
     model_type <- val_df$model
     
@@ -1010,31 +1052,24 @@ shinyServer(function(input, output,session) {
     #極小カテのIDでフィルタ
     min_id <- as.integer(unlist(strsplit(input$min_cate,"_"))[1])
     selected_df <-dfm %>% dplyr::filter(category_min_id == min_id)
-    #地域でフィルタ
+    #region filter
     selected_df <- selected_df %>% dplyr::filter(region == input$var_region_cr_m)
-    
-    #week_numでフィルタする
-    sum_df<-selected_df %>% dplyr::group_by(week_num) %>% 
-      dplyr::summarise(cl_cnt=sum(cl_cnt),cv_cnt=sum(cv_cnt),cl_uu=sum(cl_uu),cv_uu=sum(cv_uu),media_cnt=sum(media_cnt)) 
-    
-    #--CVRを計算する。
-    sum_df<- sum_df %>% dplyr::mutate(cvr=cv_cnt/cl_cnt)
     
     # errorトラップ
     validate(
-      need(nrow(sum_df) >0,"対象カテゴリのレコード数が0のため計算できません。")
+      need(nrow(selected_df) >0,"対象カテゴリのレコード数が0のため計算できません。")
     )
     
     #if(nrow(selected_df) ==0){
     #  break
     #}
-      
+    
     if(input$checkbox_4 == TRUE){
       #week_num=12が異常値なのでこれを全て削除
-      sum_df <- sum_df %>% dplyr::filter(week_num != 12)
+      selected_df <- selected_df %>% dplyr::filter(week_num != 12)
     }
-    corr<-round(cor(sum_df[2:7]),3)
-    p.mat<- cor_pmat(sum_df[2:7])
+    corr<-round(cor(selected_df[4:9]),3)
+    p.mat<- cor_pmat(selected_df[4:9])
     p<-ggcorrplot(corr,lab=TRUE,lab_size=4,
                   type="lower",p.mat=p.mat,insig="pch",title="KPI間相関行列")
     plot(p) 
@@ -1053,34 +1088,27 @@ shinyServer(function(input, output,session) {
     
     selected_df <- selected_df %>% dplyr::filter(region == input$var_region_m)
     
-    #--12/7追加(極小カテはプログラム毎に成果を足すのはＮＧだからここは注意)
-    #--week_numでKPIを集約する
-    sum_df<-selected_df %>% dplyr::group_by(week_num) %>% 
-      dplyr::summarise(cl_cnt=sum(cl_cnt),cv_cnt=sum(cv_cnt),cl_uu=sum(cl_uu),cv_uu=sum(cv_uu),media_cnt=sum(media_cnt)) 
-    
-    #--CVRを計算する。
-    sum_df<- sum_df %>% dplyr::mutate(cvr=cv_cnt/cl_cnt)
-    
+
     #レコード数が0だった場合のエラーメッセージ
     validate(
-      need(nrow(sum_df) >0, "このカテゴリのデータ数が0レコードのため、散布図を表示できません。")
+      need(nrow(selected_df) >0, "このカテゴリのデータ数が0レコードのため、散布図を表示できません。")
     )
     
     if(input$checkbox_2 == TRUE){
     #week_num=12が異常値なのでこれを全て削除
-      sum_df <- sum_df %>% dplyr::filter(week_num != 12)
+      selected_df <- selected_df %>% dplyr::filter(week_num != 12)
     }
     
     #最直近の週を区別するlatestカラムを追加
-    sum_df <- sum_df %>% dplyr::mutate(latest="FALSE")
-    latest_week <- max(sum_df$week_num)
-    sum_df[sum_df$week_num == latest_week,"latest"]<- "TRUE"
+    selected_df <- selected_df %>% dplyr::mutate(latest="FALSE")
+    latest_week <- max(selected_df$week_num)
+    selected_df[selected_df$week_num == latest_week,"latest"]<- "TRUE"
     
     
     var_x <- input$var_min_x
     var_y <- input$var_min_y
     
-    p <- ggplot(sum_df,aes(y=get(input$var_min_y), x=get(input$var_min_x),colour=latest))
+    p <- ggplot(selected_df,aes(y=get(input$var_min_y), x=get(input$var_min_x),colour=latest))
     p <- p+geom_point()+ylab(input$var_min_y)+xlab(input$var_min_x)
     p <- p + scale_color_manual(values= c("TRUE"="red","FALSE"="blue"))
     p <- p+ggtitle(paste("散布図",input$var_min,"地域",input$var_region_m,sep=":"))
