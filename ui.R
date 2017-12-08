@@ -217,28 +217,28 @@ shinyUI(navbarPage("ATマーチャント別の分析",
                                            selected = "1")
                             ),
                             mainPanel(
-                              #tabsetPanel(
-                                #tabPanel("結果",
+                              tabsetPanel(
+                                tabPanel("結果",
                                   verbatimTextOutput("model_type_info"),
-                                  conditionalPanel(
-                                    condition = "input.radio_model_sim == '1'",
-                                    verbatimTextOutput("click_info")
-                                  ),
-                                  conditionalPanel(
-                                    condition = "input.radio_model_sim == '2'",
-                                    verbatimTextOutput("model_cv")
-                                  ),
-                                  numericInput("num", label = h3("入力してください。"), value = 100),
-                                  hr(),
-                                  verbatimTextOutput("result_simulation")
-                                #),
-                                #tabPanel("確認テーブル",
-                                #         tableOutput("testdata")
-                                #         )
-                              #)
-                            )
-                          )
-                          ),
+                                   conditionalPanel(
+                                     condition = "input.radio_model_sim == '1'",
+                                     verbatimTextOutput("click_info")
+                                   ),
+                                   conditionalPanel(
+                                     condition = "input.radio_model_sim == '2'",
+                                     verbatimTextOutput("model_cv")
+                                   ),
+                                   numericInput("num", label = h3("入力してください。"), value = 100),
+                                   hr(),
+                                   verbatimTextOutput("result_simulation")
+                                 ),
+                                tabPanel("確認テーブル",
+                                         tableOutput("testviewtable")
+                                )
+                              )
+                            ) #mainPanel終わり
+                          ) # sidebarlayout終わり
+                          ), #tabPanel simulation終わり
                  tabPanel("Compare_sim",
                           titlePanel("カテゴリ間のモデル精度比較"),
                           sidebarLayout(
@@ -291,6 +291,11 @@ shinyUI(navbarPage("ATマーチャント別の分析",
                             ),
                             mainPanel(
                               helpText("更新履歴"),
+                              p("更新履歴(2017/12/08)"),
+                              div("Simulationページにマーチャント別の選択を追加した。マーチャントの選択は小カテからのみとし極小カテからのフィルタは除いた。",style="color:red"),
+                              div("Simulationページでレコード数5以下の場合のエラーメッセージと説明変数が分散が0または極端に小さいため偏回帰係数がNAとなるエラートラップを追加.",style="color:red"),
+                              dev("min_scatterplot/min_corrmatrixページの入力データをmerchant別ではない(地域/週次レベルの)データに差し替え。",style="color:red"),
+                              br(),
                               p("更新履歴(2017/12/07)"),
                               div("corrmatrixページで、マーチャント別の選択を追加した。",style="color:blue"),
                               div("12週目を除くチェックボタンは動作しない状態。",style="color:blue"),
