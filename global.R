@@ -59,23 +59,23 @@ max_weeknum <- max(df$week_num)
 #--read data of kpi min category
 # min category label
 mcate_lab <- read.table("mcate_list.csv",sep=",",header=T,fileEncoding="utf-8")
-fin.6<-"mcate_weekly_click.csv.gz"
-fin.7<-"mcate_weekly_cv.csv.gz"
-fin.8<-"mcate_weekly_clickuu.csv.gz"
-fin.9<-"mcate_weekly_cvuu.csv.gz"
-fin.10<-"mcate_weekly_media.csv.gz"
+fin.6<-"mcate_weekly_click.csv"
+fin.7<-"mcate_weekly_cv.csv"
+fin.8<-"mcate_weekly_clickuu.csv"
+fin.9<-"mcate_weekly_cvuu.csv"
+fin.10<-"mcate_weekly_media.csv"
 
-mdf_cl <- read_csv(fin.6)
-mdf_cv <- read_csv(fin.7)
-mdf_cluu <- read_csv(fin.8)
-mdf_cvuu <- read_csv(fin.9)
-mdf_m <- read_csv(fin.10)
+mdf_cl <- read.csv(fin.6,head=TRUE,sep=",")
+mdf_cv <- read.csv(fin.7,head=TRUE,sep=",")
+mdf_cluu <- read.csv(fin.8,head=TRUE,sep=",")
+mdf_cvuu <- read.csv(fin.9,head=TRUE,sep=",")
+mdf_m <- read.csv(fin.10,head=TRUE,sep=",")
 
 #- merge KPI dataset
-dfm <- left_join(x=mdf_cl,y=mdf_cv,by=c("category_min_id"="category_min_id","week_num"="week_num","region"="region","merchant_site_id"="merchant_site_id"))
-dfm <- left_join(x=dfm,y=mdf_cluu,by=c("category_min_id"="category_min_id","week_num"="week_num","region"="region","merchant_site_id"="merchant_site_id"))
-dfm <- left_join(x=dfm,y=mdf_cvuu,by=c("category_min_id"="category_min_id","week_num"="week_num","region"="region","merchant_site_id"="merchant_site_id"))
-dfm <- left_join(x=dfm,y=mdf_m,by=c("category_min_id"="category_min_id","week_num"="week_num","region"="region","merchant_site_id"="merchant_site_id"))
+dfm <- left_join(x=mdf_cl,y=mdf_cv,by=c("category_min_id"="category_min_id","week_num"="week_num","region"="region"))
+dfm <- left_join(x=dfm,y=mdf_cluu,by=c("category_min_id"="category_min_id","week_num"="week_num","region"="region"))
+dfm <- left_join(x=dfm,y=mdf_cvuu,by=c("category_min_id"="category_min_id","week_num"="week_num","region"="region"))
+dfm <- left_join(x=dfm,y=mdf_m,by=c("category_min_id"="category_min_id","week_num"="week_num","region"="region"))
 
 #--listup existing min categories in database
 exist_mincate_list<-unique(dfm$category_min_id)
