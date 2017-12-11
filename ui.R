@@ -240,7 +240,7 @@ shinyUI(navbarPage("ATマーチャント別の分析",
                           ) # sidebarlayout終わり
                           ), #tabPanel simulation終わり
                  tabPanel("Compare_sim",
-                          titlePanel("カテゴリ間のモデル精度比較"),
+                          titlePanel("マーチャント間のモデル精度比較"),
                           sidebarLayout(
                             sidebarPanel(
                               selectInput("var_region_comp",
@@ -248,9 +248,10 @@ shinyUI(navbarPage("ATマーチャント別の分析",
                                           choices = c("Niigata","Tokyo"),
                                           selected = "Niigata"),
                               br(),
-                              radioButtons("radio_cp",
-                                           label = "小カテか、極小カテかを選んでください。",
-                                           choices = c("小カテ"= "1", "極小カテ" ="2")),
+                              selectInput("cate_comp",
+                                        label="小カテゴリを選んで下さい",
+                                        choices=scate_exist$choise_label,
+                                        selected ="1000_FX"),
                               radioButtons("radio_model",
                                            label = "モデルを選んで下さい",
                                            choices = c("click数をmedia数で説明するモデル"= 1,"cv数をclick数で説明するモデル"=2)),
@@ -259,24 +260,14 @@ shinyUI(navbarPage("ATマーチャント別の分析",
                               checkboxInput("checkbox_view", label = "実行", value = FALSE)
                             ),
                             mainPanel(
-                              div("当てはまりがある程度良いカテゴリの表示"),
-                              div("モデルの当てはまりの良い(r2が1に近いほど良い)カテゴリ順"),
+                              div("当てはまりがある程度(r2が0.4以上)良いマーチャントの表示"),
+                              div("モデルの当てはまりの良い(r2が1に近いほど良い)マーチャント順"),
                               verbatimTextOutput("current_model_name"),
                               br(),
                               DT::dataTableOutput("view_compare_sim")
                             )
                           )
                           ),
-                 #tabPanel("test",
-                #          sidebarLayout(
-                #          sidebarPanel(),
-                #          mainPanel(
-                #            numericInput("lat", "Latitude"),
-                #            numericInput("long", "Longitude"),
-                #            uiOutput("cityControls")
-                #          )
-                #            )
-                #          ),
                  tabPanel("about",
                           titlePanel("データ情報"),
                           sidebarLayout(
@@ -291,6 +282,11 @@ shinyUI(navbarPage("ATマーチャント別の分析",
                             ),
                             mainPanel(
                               helpText("更新履歴"),
+                              p("更新履歴(2017/12/09)"),
+                              div("Compare_simページに小カテゴリ別と地域を選択した中でマーチャント別のモデル精度比較を可能にした。",style="color:green"),
+                              div("Compare_simページでは、予めデータ数が4以下のマーチャントは、計算対象から外している。",style="color:green"),
+                              div("ワーニング対策として目的変数のsd<3の場合計算対象から外した。",style="color:green"),
+                              br(),
                               p("更新履歴(2017/12/08)"),
                               div("Simulationページにマーチャント別の選択を追加した。マーチャントの選択は小カテからのみとし極小カテからのフィルタは除いた。",style="color:red"),
                               div("Simulationページでレコード数5以下の場合のエラーメッセージと説明変数が分散が0または極端に小さいため偏回帰係数がNAとなるエラートラップを追加.",style="color:red"),

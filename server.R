@@ -1259,20 +1259,29 @@ shinyServer(function(input, output,session) {
   })
 
 
+  output$testcateno<-renderText({
+#    cate_no <- as.integer(unlist(strsplit(input$cate_comp,"_"))[1])
+#    paste("小カテ：",cate_no,sep="")
+  })
+  
   get_compare_reg<- reactive({
-    # 以下小カテの場合全てのカテゴリに対しての変換無しモデルの実行
-    # 小カテか極小カテかでリストを作成
-    if ( input$radio_cp == 1 ){
-      all_categories <- unique(df$category_low_id)
-      type_df <- df
-      field_type <- "category_low_id"
-    }
-    else if(input$radio_cp == 2){
-      all_categories <- unique(dfm$category_min_id)
-      type_df <- dfm
-      field_type <- "category_min_id"
-    }
     
+    # 以下、地域と小カテを読んで、瞬時にマーチャントリストを設定する。
+    # 小カテのみを想定リストを作成
+    #指定された小カテのデータにフィルタする
+    #指定された地域ごとのフィルターをかける。
+    
+    cate_no <- as.integer(unlist(strsplit(input$cate_comp,"_"))[1])
+    rg<- input$var_region_comp
+    sdf <- df %>% dplyr::filter(category_low_id == cate_no)
+    sdf <- sdf %>% dplyr::filter(region == rg)
+    
+    #all_merchants<- unique(sdf$merchant_site_id)
+    #予め4個未満のデータ数のマーチャントは計算対象から外す。
+    all_id<- as.list(sdf %>% dplyr::group_by(merchant_site_id) %>% summarise(cnt=n()) %>% 
+                                   dplyr::filter(cnt>=5) %>% dplyr::select(merchant_site_id))
+    all_merchants<- all_id$merchant_site_id
+
     #モデルの目的変数を選ぶ
     if(input$radio_model=="1"){
       #media数でclick数を説明するモデル
@@ -1283,15 +1292,17 @@ shinyServer(function(input, output,session) {
       x_var <- "cl_cnt"
     }
     
-    #ここで、小カテであれ、極小カテであれ、地域ごとのフィルターをかける。
-    type_df <- type_df %>% dplyr::filter(region == input$var_region_comp)
-    
+   #最終的なアウトプットのdfを0行で定義しておく。
+    outdf1<-data.frame(matrix(rep(NA,9),nrow=1))[numeric(0),]
+    colnames(outdf1) <- c("estimate","t_statistic","t_pval","intercept","low_ci","upper_ci","r2","f_statistc","f_pval")
+    outdf <- outdf1 %>% dplyr::mutate(model_type="",merchant_id = 1111)
+
     
 
     parm1<-lmrob.control()
    # parm1$seed=1546
-    parm1$maxit.scale=400
-    parm1$max.it=400
+    parm1$maxit.scale=500
+    parm1$max.it=500
     parm1$k.max=500
     parm1$setting="KS2011"
     
@@ -1299,12 +1310,18 @@ shinyServer(function(input, output,session) {
     # max.it M-step IRWLS(反復重み付け最小二乗法) iterationsの収束回数を増やす.
     # k.max:(for the fast-S algorithm): maximal number of refinement steps for the “fully” iterated best candidates.
     
-    for (i in all_categories){
+    for (i in all_merchants){
+      
 
-      selected_df<- type_df %>% dplyr::filter(get(field_type)==i)
+      selected_df<- sdf %>% dplyr::filter(merchant_site_id ==i)
       
       #この時点で、レコードが無ければ、ループを抜ける。
-      if(nrow(selected_df)==0){next}
+      #if(nrow(selected_df)<=5){next}
+      #submitting model fitting condition
+      #sd( as.matrix(selected_df[,y_var]))  != 0
+      #In case of sd of objective variable is too small, skip caluculation.
+      # the value 3 is arbitarily setting value
+      if( sd(as.matrix(selected_df[,y_var])) < 3){next}
       
       #--モデルを複数実行する
       res_rg<-lm(data=selected_df,get(y_var)~get(x_var))
@@ -1333,15 +1350,13 @@ shinyServer(function(input, output,session) {
       # ロバスト回帰条件として、レコード数が5以上ある場合と条件を付ける。
       #-----------------------------------------
 
-      if(nrow(selected_df)>=5){
-        if( sd( selected_df[,y_var])  != 0 ){
-         warning_mes1<-"simpleWarning in lmrob.S(x, y, control = control, mf = mf): S-estimated scale == 0:  Probably exact fit; check your data\n"
-         warning_mes2<-"simpleWarning in lmrob.S(x, y, control = control, mf = mf): find_scale() did not converge in 'maxit.scale' (= 400) iterations\n"  
+      warning_mes1<-"simpleWarning in lmrob.S(x, y, control = control, mf = mf): S-estimated scale == 0:  Probably exact fit; check your data\n"
+      warning_mes2<-"simpleWarning in lmrob.S(x, y, control = control, mf = mf): find_scale() did not converge in 'maxit.scale' (= 500) iterations\n"  
          
-         error.flag5<-tryCatch( lmrob(data=selected_df,get(y_var)~ get(x_var), control=parm1),
+      error.flag5<-tryCatch( lmrob(data=selected_df,get(y_var)~ get(x_var), control=parm1),
                                   warning=function(w){
                                     if(paste(w)==warning_mes1){
-                                      print(paste("lmrob.S Warning",i,"model6"));"NaN"
+                                      print(paste("lmrob.S Warning","merchant_id:",i,"model5"));"NaN"
                                     }
                                     },
                                     error=function(e){print(paste("error:model5:",i,e));"NaN"},
@@ -1349,23 +1364,22 @@ shinyServer(function(input, output,session) {
                                   #print(paste("model5",i))
                                 }
                                     )
-            res_rg5 <- error.flag5
-            #ロバスト回帰分析の結果パラメータを取得
-            #res_rg5が、lmrobオブジェクトではなく"Nan"の場合、全てNAのデータを返す。
-            parm_df.5 <- get_rob_parameters(res_rg5)
-            parm_df.5$model_type <- "robust_normal"
+      res_rg5 <- error.flag5
+      #ロバスト回帰分析の結果パラメータを取得
+      #res_rg5が、lmrobオブジェクトではなく"Nan"の場合、全てNAのデータを返す。
+      parm_df.5 <- get_rob_parameters(res_rg5)
+      parm_df.5$model_type <- "robust_normal"
          
           
-          #-- ロバストy対数変換モデル
-          error.flag6<-tryCatch(lmrob(data=selected_df,I(log(get(y_var)+0.01))~ I(log(get(x_var)+0.01)),control=parm1),
-                                warning=function(w){
-                                  if(paste(w)==warning_mes1){
-                                    print(paste("lmrob.S Warning",i,"model6"));"NaN" 
-                                  }
-                                  else if( paste(w)== warning_mes2){
-                                    print("Did not converge if use default parameter");
-                                    #syori
-                                    parm1$maxit.scale<-4000
+      #-- ロバストy対数変換モデル
+      error.flag6<-tryCatch(lmrob(data=selected_df,I(log(get(y_var)+0.01))~ I(log(get(x_var)+0.01)),control=parm1),
+                            warning=function(w){
+                            if(paste(w)==warning_mes1){
+                              print(paste("lmrob.S Warning","merchant_id",i,"model6"));"NaN" 
+                            }
+                            else if( paste(w)== warning_mes2){
+                                print("Did not converge if use default parameter");
+                                parm1$maxit.scale<-4000
                                     res<-lmrob(data=selected_df,I(log(get(y_var)+0.01))~ I(log(get(x_var)+0.01)),control=parm1)
                                     print(paste("change parameter",i))
                                     return(res)
@@ -1377,18 +1391,18 @@ shinyServer(function(input, output,session) {
                                 },
                                 silent=TRUE
                                 )
-          res_rg6<-error.flag6
+      res_rg6<-error.flag6
                           
-          #この段階で、res_rg6は、lmrobオブジェクトになっている。
-          parm_df.6 <-get_rob_parameters(res_rg6)
-          parm_df.6$model_type<-"robust_double_log"
+      #この段階で、res_rg6は、lmrobオブジェクトになっている。
+      parm_df.6 <-get_rob_parameters(res_rg6)
+      parm_df.6$model_type<-"robust_double_log"
    
           
-          #lmrobの結果がerrorになる場合当該モデルを推定しない。
-          error.flag7<-tryCatch(lmrob(data=selected_df,I(log(get(y_var)+0.01))~ get(x_var),control=parm1),
+      #lmrobの結果がerrorになる場合当該モデルを推定しない。
+      error.flag7<-tryCatch(lmrob(data=selected_df,I(log(get(y_var)+0.01))~ get(x_var),control=parm1),
                     warning=function(w){
                       if(paste(w)==warning_mes1){
-                        print( paste("lmrob.S Warning",i,"model7") );"NaN" 
+                        print( paste("lmrob.S Warning","merchant_id",i,"model7") );"NaN" 
                       } else{
                         print(paste(w));"NaN"
                       }
@@ -1401,26 +1415,15 @@ shinyServer(function(input, output,session) {
                       
                     }
            )
-          res_rg7<- error.flag7
-          parm_df.7 <- get_rob_parameters(res_rg7)
-          parm_df.7$model_type<-"robust_y_log"
+      res_rg7<- error.flag7
+      parm_df.7 <- get_rob_parameters(res_rg7)
+      parm_df.7$model_type<-"robust_y_log"
           
-      #    {
-      #      if(class(error.flag7) =="try-error" ){
-      #        #もし何もエラーだった時は、このモデルを推定しない。
-      #        print("error:",i)}
-      #      else if ( class(error.flag)=="lmrob" ){
-      #        res_rg7<-error.flag
-      #        parm_df.7 <- get_rob_parameters(res_rg7)
-      #        parm_df.7$model_type<-"robust_y_log"
-      #      }
-      #    }
-          
-    
-          error.flag8<-tryCatch(lmrob(data=selected_df,get(y_var)~I(log(get(x_var)+0.01)),control=parm1),
+
+      error.flag8<-tryCatch(lmrob(data=selected_df,get(y_var)~I(log(get(x_var)+0.01)),control=parm1),
                                 warning=function(w){
                                   if(paste(w)==warning_mes1){
-                                    paste("lmrob.S Warning",i,"model8");"NaN" 
+                                    paste("lmrob.S Warning","merchant_id:",i,"model8");"NaN" 
                                   }
                                 } ,
                                 error=function(e){print(paste(e)); "NaN" },
@@ -1430,56 +1433,45 @@ shinyServer(function(input, output,session) {
                         )
      
           
-          res_rg8<- error.flag8
-          parm_df.8 <-get_rob_parameters(res_rg8)
-          parm_df.8$model_type<-"robust_x_log"
+      res_rg8<- error.flag8
+      parm_df.8 <-get_rob_parameters(res_rg8)
+      parm_df.8$model_type<-"robust_x_log"
     
           
-          #-----------------------------------------
-          # ロバスト回帰モデル(MM推定)の結果をレコードに繋げる
-          #-----------------------------------------
-          parm_robust_all <- rbind(parm_df.5,parm_df.6,parm_df.7,parm_df.8)
+      #-----------------------------------------
+      # ロバスト回帰モデル(MM推定)の結果をレコードに繋げる
+      #-----------------------------------------
+      parm_robust_all <- rbind(parm_df.5,parm_df.6,parm_df.7,parm_df.8)
           
-          #chisqとmodel_prの列名が通常回帰モデルと異なるので列名を揃える
-          colnames(parm_robust_all)<-colnames(parm_all)
+      #chisqとmodel_prの列名が通常回帰モデルと異なるので列名を揃える
+      colnames(parm_robust_all)<-colnames(parm_all)
           
-          parm_all<-rbind(parm_all,parm_robust_all)
+      parm_all<-rbind(parm_all,parm_robust_all)
 
-        }
-      }
-      
+
       #r2(adjusted)の最高のモデルを特定する
       #文字列の"NA"が入力されたデータは省く
       parm_good_model <- parm_all %>% dplyr::filter(r2 !="NA" & r2 != "NaN")%>%
         dplyr::arrange(desc(r2)) %>% head(1)
+      parm_good_model$merchant_ID <- i
       
-      #もし、通常回帰モデルの結果が全てR2=NaNで(つまり計算されない）、ロバスト回帰もなされなかった場合のエラートラップを作っておく
-      #その時はoutdfにはレコードを追加しないで抜ける。
-      if(nrow(parm_good_model)==1){
+      outdf<- rbind(outdf,parm_good_model)
       
-        #カテゴリNoを付与
-        parm_good_model$cateID <- i
-        
-        #if (exists("outdf")==FALSE){ # デバック用
-        if(i == 1000||i == 1){
-          outdf<-parm_good_model } else{
-            outdf<- rbind(outdf,parm_good_model)
-            }
-      }
-
+      
     #--for ループ終わり
     }
     
+    #outdfが0行だった場合は、merchant_labelを接続できない。
+    if (nrow(outdf)>0){
+      #全てのマーチャントのモデル推定結果にマーチャント名をjoinする
+      outdf<- left_join(x=outdf, y=merchant_lab,by=c("merchant_ID"="merchant_site_id"))
+      #各カテゴリごとのモデルパラメータから決定係数だけ取得するca
+      outdf <- outdf %>% dplyr::select(program_name,r2,model_type)
+    } else{
+      outdf<-data.frame()
+      outdf <- outdf %>% dplyr::mutate(program_name="NAN",r2=0,model_type="NAN")
+    }
     
-    #全てのカテゴリのモデル推定結果にカテゴリ名をjoinする
-    if (input$radio_cp == 1 ){
-      outdf<-left_join(x=scate_exist[,c("category_low_id","choise_label")],y=outdf,by=c("category_low_id"="cateID"))
-    }
-    else if (input$radio_cp == 2){
-      outdf<-left_join(x=mcate_exist[,c("category_min_id","choise_label")],y=outdf,by=c("category_min_id"="cateID"))
-    }
-    #各カテゴリごとのモデルパラメータから決定係数だけ取得する
-    outdf <- outdf %>% dplyr::select(choise_label,r2,model_type)
     return(outdf)
   })
   
@@ -1492,6 +1484,7 @@ shinyServer(function(input, output,session) {
       compare_model_output<-get_compare_reg()
       # 調整済決定係数(r2)のカテゴリⅡ絞って表示させる
       compare_model_output <- compare_model_output %>% dplyr::filter(r2>=0.4)
+      
       DT::datatable(compare_model_output,
                     rownames=FALSE,
                     options = list(
@@ -1502,6 +1495,7 @@ shinyServer(function(input, output,session) {
     }
   })
   
+
   #Page::compare_sim
   #return current model name
   output$current_model_name<-renderText({
@@ -1512,6 +1506,7 @@ shinyServer(function(input, output,session) {
     paste("モデル：",model_name,sep="")
   })
   
+
 
 })
 
