@@ -114,6 +114,28 @@ merchant_lab<- merchant_lab %>% dplyr::mutate(program_name =paste(as.character(m
 #min category list(all)
 #mincateID_list <- mcate_lab$category_min_id
 #存在するカテゴリのリスト
+#新潟に存在する極小カテリスト
+tmp<-dfm %>% dplyr::filter(region=="Niigata") %>% dplyr::select(category_min_id)%>%unique()
+#    #ラベルを付ける
+ng_categories  <- left_join(x=tmp,y=mcate_exist,by=c("category_min_id"))
+
+    
+#東京に存在する極小カテリスト
+tmp<-dfm %>% dplyr::filter(region=="Tokyo") %>% dplyr::select(category_min_id)%>%unique()
+tk_categories <- left_join(x=tmp,y=mcate_exist,by=c("category_min_id"))
+
+
+
+#default choise set for merchant
+#-- region : Niigata 
+#-- low_category_id :1000
+#merchant_labを入力されたscaet_idに限定する。
+list_1000 <- merchant_lab %>% dplyr::filter(category_low_id == 1000)
+exist_merchant <- df %>%dplyr::filter(category_low_id == 1000) %>% dplyr::filter(region == "Niigata") %>% distinct(merchant_site_id)
+
+tmp_list <- left_join(x=exist_merchant,y=list_1000,by="merchant_site_id")
+default_merchant <- tmp_list$program_name
+
 
 #回帰分析の結果から、必要なパラメータをデータフレームに取得する関数
 get_parameters<- function(res_rg){
