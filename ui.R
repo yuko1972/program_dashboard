@@ -16,11 +16,9 @@ shinyUI(navbarPage("ATマーチャント別の分析",
                                     label="小カテゴリを選んで下さい",
                                     choices = scate_exist$choise_label,
                                     selected = "1000"),
-                        #var_smによって変化させるmerchant集合
-                        #htmlOutput("select_program"),
                         #var_smが変化すると同時にupdateされるマーチャントリスト
                         selectInput("select_program_up","選択して下さい",
-                                    choices = c("33477_ひまわり証券【ひまわりFX】")),
+                                    choices = default_merchant),
                         #任意の変数を2つ選ぶ
                         selectInput("var_x",
                                     label="x軸の変数を選択して下さい",
@@ -31,12 +29,10 @@ shinyUI(navbarPage("ATマーチャント別の分析",
                                     label="y軸の変数を選択して下さい",
                                     #choices = names(df)[3:8],
                                     choices = c("cl_cnt","cv_cnt","media_cnt","cvr"),
-                                    selected = "cv_cnt"),
+                                    selected = "cl_cnt"),
                         hr(),
                         # 12週目(異常値)を除くかどうか選択
                         checkboxInput("checkbox_1", label = "週番号12を除く", value = FALSE)
-                        #actionButton("goButton","更新"),
-                        #p("上記条件でグラフを更新するには更新をクリックして下さい。")
                       )),
                       column(8,
                              tabsetPanel(position = "below",
@@ -53,7 +49,6 @@ shinyUI(navbarPage("ATマーチャント別の分析",
                   ) #fluidPageを閉じる
                   #        titlePanel("小カテゴリ毎週次データの散布図"),
                  ), #close tabPanel,
-                 
                  tabPanel("corrmatrix",
                           titlePanel("マーチャント毎週次データKPI間相関行列"),
                           sidebarLayout(
@@ -68,7 +63,7 @@ shinyUI(navbarPage("ATマーチャント別の分析",
                                           choices = scate_exist$choise_label,
                                           selected = "1000"),
                               selectInput("var_merchant_cr","選択して下さい",
-                                          choices = c("33477_ひまわり証券【ひまわりFX】")),
+                                          choices = default_merchant),
                               # 12週目(異常値)を除くかどうか選択
                               checkboxInput("checkbox_3", label = "週番号12を除く", value = FALSE)
                             ), 
@@ -97,9 +92,10 @@ shinyUI(navbarPage("ATマーチャント別の分析",
                                           choices = c("Niigata","Tokyo"),
                                           selected ="Niigata"),
                               selectInput("var_min",
-                                          label="極小カテゴリを選んで下さい",
-                                          choices = mcate_exist$choise_label,
-                                          selected = "2_DMP用＞ファッション"),
+                                          label="極小カテゴリを選択してください。",
+                                          #デフォルトは新潟にしておく
+                                          choices=ng_categories$choise_label ,
+                                          selected="2_DMP用＞ファッション"),
                               #任意の変数を2つ選ぶ
                               selectInput("var_min_x",
                                           label="x軸の変数を選択して下さい",
@@ -114,18 +110,21 @@ shinyUI(navbarPage("ATマーチャント別の分析",
                               hr(),
                               # 12週目(異常値)を除くかどうか選択
                               checkboxInput("checkbox_2", label = "週番号12を除く", value = FALSE)
-                              
                             ),
-                            
                             mainPanel(
+                              tabsetPanel(position = "below",
+                                          tabPanel("散布図",
                                 # "distPlot"という名前でreactiveなPlotタイプの出力を宣言する
-                                plotOutput("min_scatterPlot")
+                                              plotOutput("min_scatterPlot")
+                                             ),
+                                          tabPanel("テーブル確認用",
+                                            tableOutput("min_sctestdata")
+                                            )
+                              ) #tabsetPanel end
                             )
                             
                           ) #sidebarLayout  
                  ), #tabPanel,  
-                 
-                 
                  tabPanel("min_corrmatrix",
                           titlePanel("極小カテゴリ毎週次データKPI間相関行列"),
                           sidebarLayout(
@@ -136,23 +135,29 @@ shinyUI(navbarPage("ATマーチャント別の分析",
                                           selected="Niigata"
                               ),
                               selectInput("min_cate",
-                                          label="極小カテゴリを選んで下さい",
-                                          # 実際にデータに存在する極小カテしか選べない
-                                          choices = mcate_exist$choise_label,
-                                          selected = "2_DMP用＞ファッション"),
+                                          label="極小カテゴリを選択してください。",
+                                          #デフォルトは新潟にしておく
+                                          choices=ng_categories$choise_label ,
+                                          selected="2_DMP用＞ファッション"),
                               # 12週目(異常値)を除くかどうか選択
                               checkboxInput("checkbox_4", label = "週番号12を除く", value = FALSE)
                             ), 
                             mainPanel(
-                              textOutput("selected_min_cate_id"),
-                              helpText("値に×がついているセルは、列の変数と行の変数のペアが有意でないことを意味します。"),
-                              div("当該指標の標準偏差が0になる時、2つの変数間の相関係数は求められません。"),
-                              div("その場合、当該指標の列が非表示になります" ),
-                              plotOutput("min_corrmatrix")
-                            )
-                          )
+                              tabsetPanel(position = "below",
+                                          tabPanel("極小相関行列",
+                                                   textOutput("selected_min_cate_id"),
+                                                   helpText("値に×がついているセルは、列の変数と行の変数のペアが有意でないことを意味します。"),
+                                                   div("当該指標の標準偏差が0になる時、2つの変数間の相関係数は求められません。"),
+                                                   div("その場合、当該指標の列が非表示になります" ),
+                                                   plotOutput("min_corrmatrix")
+                                          ),
+                                          tabPanel("テーブル",
+                                                   tableOutput("mintestdata")
+                                          )
+                              ) #tabsetpanel end
+                            ) #main_panel end
+                          ) # sidebarPanel end
                  ),
-
                  tabPanel("timeseriesplot",
                           titlePanel("マーチャント：傾向"),
                           sidebarLayout(
@@ -169,7 +174,7 @@ shinyUI(navbarPage("ATマーチャント別の分析",
                               br(),
                               selectInput("merchant_ts",
                                                       label="マーチャントを選んで下さい",
-                                                      choices=c("39916_【トレイダーズ証券】【みんなのＦＸ】","64575_IG証券【旧ＦＸオンラインジャパン】")
+                                                      choices = default_merchant
                                                       ),
                               #input: slider for the period of week_number
                               sliderInput("slider_1",
@@ -182,11 +187,11 @@ shinyUI(navbarPage("ATマーチャント別の分析",
                             mainPanel(
                               tabsetPanel( position = "below",
                               #output: 時系列プロット：選択した変数
-                              tabPanel("Plot",
+                                tabPanel("Plot",
                                        plotOutput("sm_plot_1")),
-                              tabPanel("Table",
+                                tabPanel("Table",
                                        DT::dataTableOutput("view_table"))
-                              )
+                                )
                             )
                           )
                                              
@@ -207,7 +212,7 @@ shinyUI(navbarPage("ATマーチャント別の分析",
                               br(),
                               selectInput("merchant_sim",
                                           label="マーチャントを選んで下さい",
-                                          choices=c("39916_【トレイダーズ証券】【みんなのＦＸ】","64575_IG証券【旧ＦＸオンラインジャパン】")
+                                          choices = default_merchant
                               ),
                               # 12週目(異常値)を除くかどうか選択
                               checkboxInput("checkbox_5", label = "週番号12を除く", value = FALSE),
@@ -282,10 +287,15 @@ shinyUI(navbarPage("ATマーチャント別の分析",
                             ),
                             mainPanel(
                               helpText("更新履歴"),
-                              p("更新履歴(2017/12/09)"),
+                              p("更新履歴(2017/12/12)"),
+                              div("Scatterplot/corrmatrix/Simulationページでの「12週目を除く」ボタンによるデータ連動を可能にした。",style="color:blue"),
+                              br(),
+                              p("更新履歴(2017/12/11)"),
                               div("Compare_simページに小カテゴリ別と地域を選択した中でマーチャント別のモデル精度比較を可能にした。",style="color:green"),
                               div("Compare_simページでは、予めデータ数が4以下のマーチャントは、計算対象から外している。",style="color:green"),
                               div("ワーニング対策として目的変数のsd<3の場合計算対象から外した。",style="color:green"),
+                              div("min_scatterplotページで地域の選択により極小カテ選択肢を変更",style="color=green"),
+                              div("min_corrmatrixページとmin_scatterplotページで、データ確認タブセットを追加"),
                               br(),
                               p("更新履歴(2017/12/08)"),
                               div("Simulationページにマーチャント別の選択を追加した。マーチャントの選択は小カテからのみとし極小カテからのフィルタは除いた。",style="color:red"),
