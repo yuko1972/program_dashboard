@@ -34,7 +34,7 @@ shinyServer(function(input, output,session) {
                       )
   })
   
- 
+
   #小カテと地域によって決定する存在するマーチャント集合を作成する関数(scatterplotページ用)
   merchant_scate_list <- reactive({
     #入力された小カテIDラベル付
@@ -70,7 +70,7 @@ shinyServer(function(input, output,session) {
       input_merchant<- as.integer(unlist(strsplit(input$select_program_up,"_"))[1])
       sl_df <- sl_df %>% dplyr::filter(merchant_site_id == input_merchant)
       
-#    #チェックボックスで「週番号12を除く」にチェックがあれば、レコードを除く
+    #チェックボックスで「週番号12を除く」にチェックがあれば、レコードを除く
     if(input$checkbox_1 == TRUE){    
       #week_num=12が異常値なのでこれを全て削除
       sl_df <- sl_df %>% dplyr::filter(week_num != 12)
@@ -81,14 +81,50 @@ shinyServer(function(input, output,session) {
   #scatterplotのページでマーチャントが更新されるごとに対象のデータを返す関数。
   testdef<- eventReactive(input$select_program_up,{
     define_data_scp()
+    return(define_data_scp())
   })
   
+  #以下をコメントしないと、ラジオボタンをクリックしないと、プログラム名が変わっただけでは、テーブルが更新されない。
+  #そのため却下
+  #testdef<- eventReactive(input$checkbox_1,{
+  #  define_data_scp()
+  #  return(define_data_scp())
+  #})
+  
+  #output$testdata <- eventReactive(input$checkbox_1,{
+  #  create_scplot()
+  #})
+  #scatterplotのページでマーチャントが同じまま「週番号12を除く」ボタンが更新されるごとに対象のデータを返す関数。
+  #失敗・これでは、checkbox_1がチェックされないと、リアクティブに反応しない。
+  #omit_12w<- eventReactive(input$checkbox_1,{
+  #  tmpdf<-testdef()
+  #  if(input$checkbox_1 == TRUE){
+  #    tmpdf<-tmpdf %>% dplyr::filter(week_num !=12)
+  #  }
+  #  return(tmpdf)
+  #})
+  
+  #以下tmpdfは、testdef()を呼ばずに、define_data_scp()を呼ぶ。これで成功した。と思ったら上手くいかない。
+  #omit_12w <- reactive({
+  #  tmpdf<-define_data_scp()
+  #  if(input$checkbox_1==TRUE){
+  #    tmpdf<-tmpdf %>% dplyr::filter(week_num !=12)
+  #  }
+  #  return(tmpdf)
+  #})
 
   #scatterplotページの確認用テーブル
   output$testdata<-renderTable({
+  #create_scplot <- renderTable({
     #ここでイベントリアクティブな関数testdefを取ってきて使う
     #データを定義する。
     merchant_df<- testdef()
+   
+    # 12week目の削除.testdef()で呼び出しているdefine_data_scp()の中で定義しない。
+    if(input$checkbox_1 == TRUE){    
+    #  #week_num=12が異常値なのでこれを全て削除
+      merchant_df <- merchant_df %>% dplyr::filter(week_num != 12)
+    }
     #selected_dfが0レコードだった場合、メッセージをoutput$Scatterplotに表示する。
     validate(
       need(nrow(merchant_df) >0,"このカテゴリのデータ数が0レコードのため、散布図を表示できません。")
@@ -97,14 +133,42 @@ shinyServer(function(input, output,session) {
   })
   
 
-  
-  #小カテ毎散布図を表示
+
+    #-- make merchant program list for scate_corrmatrix page
+    merchant_scate_list_corr <- reactive({
+      #corrmatrixページで入力された小カテIDラベル付
+      scate_id <- as.integer(unlist(strsplit(input$var_sm_cr,"_"))[1])
+      
+      #merchant_labを入力されたscaet_idに限定する。
+      merchant_list <- merchant_lab %>% dplyr::filter(category_low_id == scate_id)
+      
+      #実際にデータdf存在するマーチャントのリストにする。
+      exist_mc_list <- df %>%dplyr::filter(category_low_id == scate_id) %>% dplyr::filter(region == input$var_region_cr) %>% distinct(merchant_site_id)
+      
+      exist_mc_list <- left_join(x=exist_mc_list,y=merchant_list,by="merchant_site_id")
+      program_set <- exist_mc_list$program_name
+      return(program_set)
+      
+    })
+
+
+
+  #マーチャント毎散布図を表示
   output$scatterPlot <- renderPlot({
     #ggplotのタイトル用ラベルを取得
     catename <- input$var_sm
     mid <-unlist(strsplit(input$select_program_up,"_"))[1]
-  
+
+    #データの呼び出し  
     sdf<- testdef()
+    #プログラム名だけでなく、週番号12を除くにも動的に反応する。
+    #sdf<- reflect_week()
+    
+    #12weekを除くかどうか？
+    if(input$checkbox_1 == TRUE){    
+      #week_num=12が異常値なのでこれを全て削除
+      sdf <- sdf %>% dplyr::filter(week_num != 12)
+    }
     #selected_dfが0レコードだった場合、メッセージをoutput$Scatterplotに表示する。
     validate(
       need(nrow(sdf) >0,"このカテゴリのデータ数が0レコードのため、散布図を表示できません。")
@@ -149,6 +213,50 @@ shinyServer(function(input, output,session) {
     return(program_set)
     
   })
+  
+  #-----あとでごっそり場所移動
+  #min_Scatterplotページの地域を読む
+  observeEvent(input$var_region_m,{
+    set_m <- mcate_list()
+    updateSelectInput(session,"var_min",
+                      label="極小カテゴリを選択して下さい",
+                      choices= set_m,
+                      selected = head(set_m,1)
+    )
+  })
+
+  
+  #--min_Scaterplotのページ用。選ばれた地域によって選択可能な極小カテゴリセットを返す
+  #-- merchant_mcate_listと全く同じだが、input$var_region_mかinput$var_region_cr_mかが違うだけ。何とかしたい。
+  mcate_list<- reactive({
+    foo<-dfm %>% dplyr::filter(region==input$var_region_m) %>% dplyr::select(category_min_id)%>%unique()
+    #ラベルを付ける
+    foo <- left_join(x=foo,y=mcate_exist,by=c("category_min_id"))
+    program_set <- foo$choise_label
+    return(program_set)
+  })
+  
+  #--min_corrmatrixページ用。選ばれた地域によって選択可能な極小カテゴリセットを返す
+    merchant_mcate_list<- reactive({
+      foo<-dfm %>% dplyr::filter(region==input$var_region_cr_m) %>% dplyr::select(category_min_id)%>%unique()
+  #    #ラベルを付ける
+      foo <- left_join(x=foo,y=mcate_exist,by=c("category_min_id"))
+      program_set <- foo$choise_label
+      return(program_set)
+    })
+  
+
+  #min_corrmatrixページの地域を読む
+    observeEvent(input$var_region_cr_m,{
+      set_m <- merchant_mcate_list()
+      updateSelectInput(session,"min_cate",
+                        label="極小カテゴリを選択して下さい",
+                        choices= set_m,
+                        selected = head(set_m,1)
+      )
+    })
+  
+  #----------ここまで
   
   #corrmatrixページの小カテを読む
   observeEvent(input$var_sm_cr,{
@@ -202,6 +310,7 @@ shinyServer(function(input, output,session) {
       need(nrow(selected_df) >0,"対象カテゴリのレコード数が0のため計算できません。")
     )
     
+    #datadef()にも定義しているが、こちらでも再度読み込み確認している。
     if( input$checkbox_3 == TRUE){
     #week_num=12が異常値なのでこれを全て削除
       selected_df <- selected_df %>% dplyr::filter(week_num != 12)
@@ -225,6 +334,13 @@ shinyServer(function(input, output,session) {
     #データを定義する。
     merchant_df<-datadef()
     #selected_dfが0レコードだった場合、メッセージをoutput$Scatterplotに表示する。
+    
+    if( input$checkbox_3 == TRUE){
+      #week_num=12が異常値なのでこれを全て削除
+      merchant_df <- merchant_df %>% dplyr::filter(week_num != 12)
+    }
+    
+    
     validate(
       need(nrow(merchant_df) >0,"このカテゴリのデータ数が0レコードのため、表示できません。")
     )
@@ -244,6 +360,8 @@ shinyServer(function(input, output,session) {
       #week_num=12が異常値なのでこれを全て削除
       selected_df <- selected_df %>% dplyr::filter(week_num != 12)
     }
+    #上記に書いていても、呼び出した後に、さらにチェックボックスが動いたら、反応させなければならい。
+    #そのために、define_data()を呼び出した側でも同じfilterを書いている。
     #UIのregion変数を読んで、地域を新潟、東京のいずれかに絞る。
     #小カテ、極小カテ共通
     rg <- input$var_region_sim
@@ -264,6 +382,9 @@ shinyServer(function(input, output,session) {
       #ここでイベントリアクティブな関数define_data_recを取ってきて使う
       merchant_df<- define_data_rec()
       #selected_dfが0レコードだった場合、メッセージをoutput$Scatterplotに表示する。
+      if(input$checkbox_5 == TRUE){
+        merchant_df <- merchant_df %>% dplyr::filter(week_num != 12)
+      }
       validate(
         need(nrow(merchant_df) >0,"このカテゴリのデータ数が0レコードです。")
       )
@@ -280,6 +401,11 @@ shinyServer(function(input, output,session) {
     
     #Simulationページのinput情報からプログラムにeventReactiveにデータを取得。
     selected_df<- define_data_rec()
+    
+    #12week checkbox
+    if (input$checkbox_5 == TRUE){
+      selected_df <- selected_df %>% dplyr::filter(week_num != 12)
+    }
     
     #shiny用、データ数が0だった時のエラーメッセージ
     validate(need( nrow(selected_df)>=5,"データが5未満です。計算できません。" )
@@ -1031,30 +1157,72 @@ shinyServer(function(input, output,session) {
   })
   
 
-  #define reactive code
-  min_id_input <- reactive({
-    tmp_id <- subset(mcate_exist,choise_label==input$min_cate)
-    tmp_id$category_min_id
-    #tmp_id is integer
-  })
-  
+
   output$selected_min_cate_id<-renderText({
      paste("極小カテゴリ",input$min_cate," 地域",input$var_region_cr_m,sep=":")
   })
   
+  #min_corrmatrixのページで極小カテゴリが更新されるごとに対象のデータを返す関数。
+  min_defdata<- eventReactive(input$min_cate,{
+    define_df_min()
+  })
   
+  #min_corrmatrixのページで地域が変更されるごとに、データを差し替える
+  min_defdata<- eventReactive(input$var_region_cr_m,{
+    define_df_min()
+  })
   
-  
-  #contens of "min_corrmatrix"
-  #calculate correlation matrix between KPI at mincate lebel
-  output$min_corrmatrix<- renderPlot({
-    #input_cate<- min_id_input()
-    #極小カテのIDでフィルタ
+
+  #min_corrmatrixページでのデータをリアクティブに差し替える関数
+  define_df_min<-reactive({
     min_id <- as.integer(unlist(strsplit(input$min_cate,"_"))[1])
     selected_df <-dfm %>% dplyr::filter(category_min_id == min_id)
     #region filter
     selected_df <- selected_df %>% dplyr::filter(region == input$var_region_cr_m)
+    #12week remove 
+    if(input$checkbox_4 == TRUE){
+      #week_num=12が異常値なのでこれを全て削除
+      selected_df <- selected_df %>% dplyr::filter(week_num != 12)
+    }
+    return(selected_df)
+  })
+  
+  #For min_corrmatrix page deta check
+  output$mintestdata<-renderTable({
+    #define_df_min()は、corrmatrixの返却値
+    faa<-define_df_min()
+    return(faa) 
     
+  })
+  
+  
+  #min_scatterplotページでのデータをリアクティブに差し替える関数
+  define_df_spmin<-reactive({
+    min_id <- as.integer(unlist(strsplit(input$var_min,"_"))[1])
+    selected_df <-dfm %>% dplyr::filter(category_min_id == min_id)
+    #region filter
+    selected_df <- selected_df %>% dplyr::filter(region == input$var_region_m)
+    if(input$checkbox_2 == TRUE){
+      #week_num=12が異常値なのでこれを全て削除
+      selected_df <- selected_df %>% dplyr::filter(week_num != 12)
+    }
+    
+    return(selected_df)
+  })
+  
+  #For min_scatterplot
+  output$min_sctestdata<-renderTable({
+    #define_df_spmin()は、scatterplotの返却値
+    faa<-define_df_spmin()
+    return(faa) 
+  })
+  
+  #contens of "min_corrmatrix"
+  #calculate correlation matrix between KPI at mincate lebel
+  output$min_corrmatrix<- renderPlot({
+
+    #データセットを取得
+    selected_df<-define_df_min() 
     # errorトラップ
     validate(
       need(nrow(selected_df) >0,"対象カテゴリのレコード数が0のため計算できません。")
@@ -1064,10 +1232,7 @@ shinyServer(function(input, output,session) {
     #  break
     #}
     
-    if(input$checkbox_4 == TRUE){
-      #week_num=12が異常値なのでこれを全て削除
-      selected_df <- selected_df %>% dplyr::filter(week_num != 12)
-    }
+    
     corr<-round(cor(selected_df[4:9]),3)
     p.mat<- cor_pmat(selected_df[4:9])
     p<-ggcorrplot(corr,lab=TRUE,lab_size=4,
@@ -1082,12 +1247,9 @@ shinyServer(function(input, output,session) {
   #contens of "min_scatterPlot"
   #crate scatterplot mincate 
   output$min_scatterPlot<- renderPlot({
-    #input_cate <-min_id_input_s()
-    input_cate <- as.integer(unlist(strsplit(input$var_min,"_"))[1])
-    selected_df <-dfm %>% dplyr::filter(category_min_id == input_cate)
-    
-    selected_df <- selected_df %>% dplyr::filter(region == input$var_region_m)
-    
+
+    #eventreactiveな関数を呼び出す
+    selected_df<-define_df_spmin()
 
     #レコード数が0だった場合のエラーメッセージ
     validate(
